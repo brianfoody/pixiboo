@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Stage, Layer, Circle, Rect } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
 
