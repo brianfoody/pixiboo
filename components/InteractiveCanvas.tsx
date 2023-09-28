@@ -8,15 +8,23 @@ type Circle = {
   radius: number;
 };
 
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+};
+
 const FORCEFIELD_RADIUS = 75;
 
 const InteractiveCanvas: React.FC = () => {
   const width = typeof window !== "undefined" ? window.innerWidth : 100;
   const height = typeof window !== "undefined" ? window.innerHeight : 100;
 
+  const circleCount = isMobileDevice() ? 100 : 500;
+
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [circles, setCircles] = useState<Circle[]>(
-    Array.from({ length: 500 }).map(() => ({
+    Array.from({ length: circleCount }).map(() => ({
       x: Math.random() * width,
       y: Math.random() * height,
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
