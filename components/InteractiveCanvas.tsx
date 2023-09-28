@@ -100,8 +100,8 @@ const InteractiveCanvas: React.FC = () => {
 
     setScale(newScale);
     setOffset((prevOffset) => ({
-      x: prevOffset.x - newOffsetX,
-      y: prevOffset.y - newOffsetY,
+      x: prevOffset.x + newOffsetX,
+      y: prevOffset.y + newOffsetY,
     }));
     setInitialPinchDistance(newDistance);
   };
