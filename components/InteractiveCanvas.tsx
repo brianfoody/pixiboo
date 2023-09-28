@@ -50,7 +50,14 @@ const InteractiveCanvas: React.FC = () => {
         const mousePos = stage.getPointerPosition();
         setCursorPos(mousePos!);
       }}
+      onTouchMove={(e) => {
+        const stage = e.target.getStage();
+        if (!stage) return;
+        const touchPos = stage.getPointerPosition();
+        setCursorPos(touchPos!);
+      }}
       onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+      onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
     >
       <Layer>
         <Rect width={width} height={height} fill="white" />
