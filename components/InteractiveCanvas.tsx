@@ -92,7 +92,7 @@ const InteractiveCanvas: React.FC = () => {
     const dy = y1 - y2;
     const newDistance = Math.sqrt(dx * dx + dy * dy);
 
-    const scaleFactor = newDistance / initialPinchDistance;
+    const scaleFactor = newDistance / initialPinchDistance!;
 
     const newScale = scale * scaleFactor;
 
