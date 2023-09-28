@@ -9,12 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@react-spring/konva": "^9.7.3",
     "@types/node": "20.5.7",
     "@types/react": "18.2.21",
     "@types/react-dom": "18.2.7",
+    "canvas": "^2.11.2",
     "next": "13.4.19",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "5.2.2"
+    "react-konva": "^18.2.10",
+    "react-spring": "^9.7.3",
+    "typescript": "5.2.2",
+    "use-image": "^1.1.1"
   }
 }
