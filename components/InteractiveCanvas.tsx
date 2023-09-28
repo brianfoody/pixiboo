@@ -48,23 +48,29 @@ const InteractiveCanvas: React.FC = () => {
     return pos;
   };
 
+  const handleEvent = (e: any) => {
+    const stage = e.target.getStage();
+    if (!stage) return;
+
+    // Check if event is a touch event
+    const touchEvent = e.evt.touches && e.evt.touches.length > 0;
+
+    // Use the first touch point if it's a touch event, else use mouse position
+    const pos = touchEvent
+      ? { x: e.evt.touches[0].clientX, y: e.evt.touches[0].clientY }
+      : stage.getPointerPosition();
+
+    setCursorPos(pos);
+  };
+
   return (
     <Stage
       width={width}
       height={height}
-      onMouseMove={(e) => {
-        const stage = e.target.getStage();
-        if (!stage) return;
-        const mousePos = stage.getPointerPosition();
-        setCursorPos(mousePos!);
-      }}
-      onTouchMove={(e) => {
-        const stage = e.target.getStage();
-        if (!stage) return;
-        const touchPos = stage.getPointerPosition();
-        setCursorPos(touchPos!);
-      }}
+      onMouseMove={(e) => handleEvent(e)}
       onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+      onTouchStart={(e) => handleEvent(e)}
+      onTouchMove={(e) => handleEvent(e)}
       onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
     >
       <Layer>
