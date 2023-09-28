@@ -1,3 +1,12 @@
+// Act as a react.js expert with extensive knowledge of react-konva.
+
+// We want to enhance an existing react-konva canvas app. The present functionality is to move items out of the way as the mouse pans across the canvas.
+
+// We would like to enhances it with these pieces of functionality.
+
+// 1. Please make the canvas zoomable through a swipe gesture on mobile
+
+// Code:
 import { useState } from "react";
 import { Stage, Layer, Circle, Rect } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
@@ -30,6 +39,10 @@ const InteractiveCanvas: React.FC = () => {
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
     }))
   );
+  const [scale, setScale] = useState<number>(1);
+  const [initialPinchDistance, setInitialPinchDistance] = useState<
+    number | null
+  >(null);
 
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
@@ -46,6 +59,29 @@ const InteractiveCanvas: React.FC = () => {
       };
     }
     return pos;
+  };
+
+  const handlePinchStart = (e: any) => {
+    if (e.evt.touches.length !== 2) return;
+
+    const dx = e.evt.touches[0].clientX - e.evt.touches[1].clientX;
+    const dy = e.evt.touches[0].clientY - e.evt.touches[1].clientY;
+
+    setInitialPinchDistance(Math.sqrt(dx * dx + dy * dy));
+  };
+
+  const handlePinchMove = (e: any) => {
+    if (e.evt.touches.length !== 2 || initialPinchDistance === null) return;
+
+    const dx = e.evt.touches[0].clientX - e.evt.touches[1].clientX;
+    const dy = e.evt.touches[0].clientY - e.evt.touches[1].clientY;
+    const newDistance = Math.sqrt(dx * dx + dy * dy);
+
+    // You can adjust the scaling factor as required
+    const scaleFactor = newDistance / initialPinchDistance;
+
+    setScale(scale * scaleFactor);
+    setInitialPinchDistance(newDistance);
   };
 
   const handleEvent = (e: any) => {
@@ -67,11 +103,19 @@ const InteractiveCanvas: React.FC = () => {
     <Stage
       width={width}
       height={height}
+      scaleX={scale}
+      scaleY={scale}
       onMouseMove={(e) => handleEvent(e)}
       onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
-      onTouchStart={(e) => handleEvent(e)}
-      onTouchMove={(e) => handleEvent(e)}
       onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
+      onTouchStart={(e) => {
+        handleEvent(e);
+        handlePinchStart(e);
+      }}
+      onTouchMove={(e) => {
+        handleEvent(e);
+        handlePinchMove(e);
+      }}
     >
       <Layer>
         <Rect width={width} height={height} fill="white" />
