@@ -4,7 +4,7 @@
 
 // We would like to enhances it with these pieces of functionality.
 
-// 1. Please make the canvas zoomable through a swipe gesture on mobile
+// 1. Please
 
 // Code:
 import { useState } from "react";
@@ -138,7 +138,7 @@ const InteractiveCanvas: React.FC = () => {
       }}
       onTouchMove={(e) => {
         handleEvent(e);
-        handlePinchMove(e);
+        // handlePinchMove(e);
       }}
     >
       <Layer>
