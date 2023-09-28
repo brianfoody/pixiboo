@@ -43,6 +43,10 @@ const InteractiveCanvas: React.FC = () => {
   const [initialPinchDistance, setInitialPinchDistance] = useState<
     number | null
   >(null);
+  const [offset, setOffset] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
 
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
@@ -73,14 +77,32 @@ const InteractiveCanvas: React.FC = () => {
   const handlePinchMove = (e: any) => {
     if (e.evt.touches.length !== 2 || initialPinchDistance === null) return;
 
-    const dx = e.evt.touches[0].clientX - e.evt.touches[1].clientX;
-    const dy = e.evt.touches[0].clientY - e.evt.touches[1].clientY;
+    const x1 = e.evt.touches[0].clientX;
+    const y1 = e.evt.touches[0].clientY;
+    const x2 = e.evt.touches[1].clientX;
+    const y2 = e.evt.touches[1].clientY;
+
+    const midpoint = {
+      x: (x1 + x2) / 2,
+      y: (y1 + y2) / 2,
+    };
+
+    const dx = x1 - x2;
+    const dy = y1 - y2;
     const newDistance = Math.sqrt(dx * dx + dy * dy);
 
-    // You can adjust the scaling factor as required
     const scaleFactor = newDistance / initialPinchDistance;
 
-    setScale(scale * scaleFactor);
+    const newScale = scale * scaleFactor;
+
+    const newOffsetX = (midpoint.x - width / 2) * (newScale - scale);
+    const newOffsetY = (midpoint.y - height / 2) * (newScale - scale);
+
+    setScale(newScale);
+    setOffset((prevOffset) => ({
+      x: prevOffset.x - newOffsetX,
+      y: prevOffset.y - newOffsetY,
+    }));
     setInitialPinchDistance(newDistance);
   };
 
@@ -105,6 +127,8 @@ const InteractiveCanvas: React.FC = () => {
       height={height}
       scaleX={scale}
       scaleY={scale}
+      offsetX={offset.x}
+      offsetY={offset.y}
       onMouseMove={(e) => handleEvent(e)}
       onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
       onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
