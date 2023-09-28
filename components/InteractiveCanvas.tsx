@@ -32,21 +32,13 @@ const InteractiveCanvas: React.FC = () => {
   const circleCount = isMobileDevice() ? 100 : 500;
 
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [circles, setCircles] = useState<Circle[]>(
+  const [circles] = useState<Circle[]>(
     Array.from({ length: circleCount }).map(() => ({
       x: Math.random() * width,
       y: Math.random() * height,
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
     }))
   );
-  const [scale, setScale] = useState<number>(1);
-  const [initialPinchDistance, setInitialPinchDistance] = useState<
-    number | null
-  >(null);
-  const [offset, setOffset] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
 
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
@@ -70,41 +62,6 @@ const InteractiveCanvas: React.FC = () => {
 
     const dx = e.evt.touches[0].clientX - e.evt.touches[1].clientX;
     const dy = e.evt.touches[0].clientY - e.evt.touches[1].clientY;
-
-    setInitialPinchDistance(Math.sqrt(dx * dx + dy * dy));
-  };
-
-  const handlePinchMove = (e: any) => {
-    return;
-    if (e.evt.touches.length !== 2 || initialPinchDistance === null) return;
-
-    const x1 = e.evt.touches[0].clientX;
-    const y1 = e.evt.touches[0].clientY;
-    const x2 = e.evt.touches[1].clientX;
-    const y2 = e.evt.touches[1].clientY;
-
-    const midpoint = {
-      x: (x1 + x2) / 2,
-      y: (y1 + y2) / 2,
-    };
-
-    const dx = x1 - x2;
-    const dy = y1 - y2;
-    const newDistance = Math.sqrt(dx * dx + dy * dy);
-
-    const scaleFactor = newDistance / initialPinchDistance!;
-
-    const newScale = scale * scaleFactor;
-
-    const newOffsetX = (midpoint.x - width / 2) * (newScale - scale);
-    const newOffsetY = (midpoint.y - height / 2) * (newScale - scale);
-
-    setScale(newScale);
-    setOffset((prevOffset) => ({
-      x: prevOffset.x - newOffsetX,
-      y: prevOffset.y - newOffsetY,
-    }));
-    setInitialPinchDistance(newDistance);
   };
 
   const handleEvent = (e: any) => {
@@ -123,46 +80,61 @@ const InteractiveCanvas: React.FC = () => {
   };
 
   return (
-    <Stage
-      width={width}
-      height={height}
-      scaleX={scale}
-      scaleY={scale}
-      offsetX={offset.x}
-      offsetY={offset.y}
-      onMouseMove={(e) => handleEvent(e)}
-      onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
-      onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
-      onTouchStart={(e) => {
-        handleEvent(e);
-        handlePinchStart(e);
-      }}
-      onTouchMove={(e) => {
-        handleEvent(e);
-        handlePinchMove(e);
+    <div
+      style={{
+        width,
+        height,
       }}
     >
-      <Layer>
-        <Rect width={width} height={height} fill="white" />
+      <div
+        style={{
+          width,
+          height: 40,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <a href="https://pixiboo.ai">
+          <p>Pre-order your artwork now!</p>
+        </a>
+      </div>
+      <Stage
+        width={width}
+        height={height - 40}
+        onMouseMove={(e) => handleEvent(e)}
+        onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+        onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
+        onTouchStart={(e) => {
+          handleEvent(e);
+          handlePinchStart(e);
+        }}
+        onTouchMove={(e) => {
+          handleEvent(e);
+        }}
+      >
+        <Layer>
+          <Rect width={width} height={height} fill="white" />
 
-        {circles.map((circle, index) => {
-          const springProps = useSpring({
-            ...calculateSpring(circle),
-            config: { tension: 170, friction: 20 },
-          });
+          {circles.map((circle, index) => {
+            const springProps = useSpring({
+              ...calculateSpring(circle),
+              config: { tension: 170, friction: 20 },
+            });
 
-          return (
-            // @ts-ignore
-            <animated.Circle
-              key={index}
-              radius={circle.radius}
-              fill="black"
-              {...springProps}
-            />
-          );
-        })}
-      </Layer>
-    </Stage>
+            return (
+              // @ts-ignore
+              <animated.Circle
+                key={index}
+                radius={circle.radius}
+                fill="black"
+                {...springProps}
+              />
+            );
+          })}
+        </Layer>
+      </Stage>
+    </div>
   );
 };
 
