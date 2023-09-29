@@ -4,7 +4,8 @@
 
 // We would like to enhances it with these pieces of functionality.
 
-// 1. Please draw a curved arrow pointing toward the artShape in the top left. The arc should go from middle of the screen and arch to top left
+// 1. Allow the artShape to be resizable.
+// Use React-conva allow the user to resize the artShape. Ideally the shape would have a dotted border or similar around it that can be used to resize
 
 // Code:
 import { useRef, useState } from "react";
@@ -12,6 +13,7 @@ import { Stage, Layer, Circle, Rect, Arrow, Text } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
 import DraggableShape from "./DraggableShape";
 import { isMobileDevice } from "./utils";
+import ResizableCircle from "./ResizableCircle";
 
 type Circle = {
   x: number;
@@ -19,10 +21,10 @@ type Circle = {
   radius: number;
 };
 
-const ART_CIRCLE_RADIUS = 75;
-const ART_CIRCLE_START_Y = ART_CIRCLE_RADIUS + 25;
-const ART_CIRCLE_START_X = ART_CIRCLE_RADIUS + 25;
-const FORCEFIELD_RADIUS = ART_CIRCLE_RADIUS * 1.25;
+const ART_CIRCLE_WIDTH = 75;
+const ART_CIRCLE_HEIGHT = 100;
+const ART_CIRCLE_START_Y = ART_CIRCLE_HEIGHT + 25;
+const ART_CIRCLE_START_X = ART_CIRCLE_WIDTH + 25;
 
 const InteractiveCanvas: React.FC = () => {
   const width = typeof window !== "undefined" ? window.innerWidth : 100;
@@ -34,9 +36,10 @@ const InteractiveCanvas: React.FC = () => {
 
   const circleCount = isMobileDevice() ? 100 : 500;
 
-  const [hasDragged, setHasDragged] = useState<
-    { x: number; y: number } | undefined
-  >(undefined);
+  const [hasDragged, setHasDragged] = useState(false);
+  const shapeRef = useRef();
+  const trRef = useRef();
+
   const [dragStarted, setDragStarted] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [circles] = useState<Circle[]>(
@@ -46,25 +49,30 @@ const InteractiveCanvas: React.FC = () => {
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
     }))
   );
+
+  const [isSeleced, setIsSelected] = useState(false);
   const instructionText = "Drag your character to hide it within the artwork";
   const textSize = width * 0.03; // This will adjust the text size based on the screen width, adjust the multiplier as needed
   const padding = 10; // space around the text inside the background
 
-  const artShape = {
+  const [artShape, setArtShape] = useState({
     shape: "circle",
-    color: "green",
+    fill: "green",
     x: ART_CIRCLE_START_X,
     y: ART_CIRCLE_START_Y,
-    radius: ART_CIRCLE_RADIUS,
-  };
+    width: ART_CIRCLE_WIDTH,
+    height: ART_CIRCLE_HEIGHT,
+  });
 
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
     const dy = cursorPos.y - pos.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
+    const FORCEFIELD_RADIUS = Math.max(artShape.width, artShape.height);
+
     if (distance < FORCEFIELD_RADIUS) {
-      let moveAway = 150;
+      let moveAway = FORCEFIELD_RADIUS * 0.75;
       // Direction based on dx and dy
       const angle = Math.atan2(dy, dx);
       return {
@@ -96,8 +104,6 @@ const InteractiveCanvas: React.FC = () => {
 
     setCursorPos(pos);
   };
-
-  console.log(dragStarted);
 
   return (
     <div
@@ -145,10 +151,28 @@ const InteractiveCanvas: React.FC = () => {
         }}
       >
         <Layer>
-          <Rect width={width} height={height} fill="white" />
+          <Rect
+            width={width}
+            height={height}
+            fill="white"
+            onClick={() => setIsSelected(false)}
+            onTap={() => setIsSelected(false)}
+          />
 
-          {hasDragged?.x && (
-            <DraggableShape {...artShape} x={hasDragged.x} y={hasDragged.y} />
+          {hasDragged && (
+            <ResizableCircle
+              shapeProps={artShape}
+              isSelected={isSeleced}
+              onSelect={() => {
+                setIsSelected(!isSeleced);
+              }}
+              onChange={(newAttrs) => {
+                setArtShape({
+                  ...artShape,
+                  ...newAttrs,
+                });
+              }}
+            />
           )}
 
           {circles.map((circle, index) => {
@@ -168,12 +192,17 @@ const InteractiveCanvas: React.FC = () => {
             );
           })}
 
-          {hasDragged === undefined && (
+          {!hasDragged && (
             <DraggableShape
               {...artShape}
               onDragStart={() => setDragStarted(true)}
               onDragEnd={(x, y) => {
-                setHasDragged({ x, y });
+                setHasDragged(true);
+                setArtShape({
+                  ...artShape,
+                  x,
+                  y,
+                });
               }}
             />
           )}
@@ -184,8 +213,8 @@ const InteractiveCanvas: React.FC = () => {
                 points={[
                   width / 2,
                   height / 2,
-                  ART_CIRCLE_START_X + ART_CIRCLE_RADIUS * 1.25,
-                  ART_CIRCLE_START_Y + ART_CIRCLE_RADIUS * 0.5,
+                  ART_CIRCLE_START_X + ART_CIRCLE_WIDTH * 1.25,
+                  ART_CIRCLE_START_Y + ART_CIRCLE_HEIGHT * 0.5,
                 ]}
                 pointerLength={20}
                 pointerWidth={20}
