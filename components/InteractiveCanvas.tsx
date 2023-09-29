@@ -4,8 +4,7 @@
 
 // We would like to enhances it with these pieces of functionality.
 
-// 1. Allow the artShape to be resizable.
-// Use React-conva allow the user to resize the artShape. Ideally the shape would have a dotted border or similar around it that can be used to resize
+// 1. Implement the handlePrint button that allows the user to print the artwork when they are happy
 
 // Code:
 import { useRef, useState } from "react";
@@ -37,8 +36,6 @@ const InteractiveCanvas: React.FC = () => {
   const circleCount = isMobileDevice() ? 100 : 500;
 
   const [hasDragged, setHasDragged] = useState(false);
-  const shapeRef = useRef();
-  const trRef = useRef();
 
   const [dragStarted, setDragStarted] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
@@ -49,6 +46,8 @@ const InteractiveCanvas: React.FC = () => {
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
     }))
   );
+
+  const stageRef = useRef(null);
 
   const [isSeleced, setIsSelected] = useState(false);
   const instructionText = "Drag your character to hide it within the artwork";
@@ -64,6 +63,29 @@ const InteractiveCanvas: React.FC = () => {
     height: ART_CIRCLE_HEIGHT,
   });
 
+  const handlePrint = () => {
+    if (!stageRef.current) return;
+
+    // Convert stage to a data URL (image format)
+    // @ts-ignore
+    const dataUrl = stageRef.current.toDataURL();
+
+    // Create a new anchor element
+    const link = document.createElement("a");
+    link.href = dataUrl;
+
+    // Specify the desired file name for the download
+    link.download = "artwork.png";
+
+    // Append the anchor to the body (it won't be visible)
+    document.body.appendChild(link);
+
+    // Trigger a click event on the anchor to start the download
+    link.click();
+
+    // Remove the anchor from the DOM
+    document.body.removeChild(link);
+  };
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
     const dy = cursorPos.y - pos.y;
@@ -72,7 +94,7 @@ const InteractiveCanvas: React.FC = () => {
     const FORCEFIELD_RADIUS = Math.max(artShape.width, artShape.height);
 
     if (distance < FORCEFIELD_RADIUS) {
-      let moveAway = FORCEFIELD_RADIUS * 0.75;
+      let moveAway = FORCEFIELD_RADIUS * 0.9;
       // Direction based on dx and dy
       const angle = Math.atan2(dy, dx);
       return {
@@ -119,15 +141,27 @@ const InteractiveCanvas: React.FC = () => {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
+          position: "relative",
+          flexDirection: "row",
         }}
       >
         <a href="https://pixiboo.ai">
           <p>Pre-order your artwork now!</p>
         </a>
+
+        <button
+          onClick={handlePrint}
+          style={{
+            marginRight: "10px",
+          }}
+        >
+          Print
+        </button>
       </div>
 
       {/* <ShapePanel onShapeDrop={handleShapeDrop} /> */}
       <Stage
+        ref={stageRef}
         width={width}
         height={height - 40}
         onMouseMove={(e) => {
