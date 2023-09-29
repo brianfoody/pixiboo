@@ -7,9 +7,11 @@
 // 1. Please make the canvas zoomable through a swipe gesture on mobile
 
 // Code:
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Stage, Layer, Circle, Rect } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
+import DraggableShape from "./DraggableShape";
+import { isMobileDevice } from "./utils";
 
 type Circle = {
   x: number;
@@ -17,20 +19,32 @@ type Circle = {
   radius: number;
 };
 
-const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
+type DroppedShape = {
+  id: string;
+  shape: string;
+  color: string;
+  x: number;
+  y: number;
 };
 
-const FORCEFIELD_RADIUS = 75;
+const ART_CIRCLE_RADIUS = 75;
+const ART_CIRCLE_START_Y = ART_CIRCLE_RADIUS + 25;
+const ART_CIRCLE_START_X = ART_CIRCLE_RADIUS + 25;
+const FORCEFIELD_RADIUS = ART_CIRCLE_RADIUS * 1.25;
 
 const InteractiveCanvas: React.FC = () => {
   const width = typeof window !== "undefined" ? window.innerWidth : 100;
   const height = typeof window !== "undefined" ? window.innerHeight : 100;
 
+  // When we lift the cursor from a drag we also kick off a cursor event.
+  // This adds a timed lock so that things snap back nicely
+  const lockedMouseMove = useRef(false);
+
   const circleCount = isMobileDevice() ? 100 : 500;
 
+  const [hasDragged, setHasDragged] = useState<
+    { x: number; y: number } | undefined
+  >(undefined);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [circles] = useState<Circle[]>(
     Array.from({ length: circleCount }).map(() => ({
@@ -39,6 +53,13 @@ const InteractiveCanvas: React.FC = () => {
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
     }))
   );
+  const artShape = {
+    shape: "circle",
+    color: "green",
+    x: ART_CIRCLE_START_X,
+    y: ART_CIRCLE_START_Y,
+    radius: ART_CIRCLE_RADIUS,
+  };
 
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
@@ -79,6 +100,8 @@ const InteractiveCanvas: React.FC = () => {
     setCursorPos(pos);
   };
 
+  console.log("hasDragged");
+  console.log(hasDragged);
   return (
     <div
       style={{
@@ -99,12 +122,23 @@ const InteractiveCanvas: React.FC = () => {
           <p>Pre-order your artwork now!</p>
         </a>
       </div>
+
+      {/* <ShapePanel onShapeDrop={handleShapeDrop} /> */}
       <Stage
         width={width}
         height={height - 40}
-        onMouseMove={(e) => handleEvent(e)}
-        onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+        onMouseMove={(e) => {
+          if (lockedMouseMove.current) return;
+          handleEvent(e);
+        }}
         onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
+        onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+        onDragStart={() => (lockedMouseMove.current = true)}
+        onDragMove={(e) => handleEvent(e)}
+        onDragEnd={() => {
+          setCursorPos({ x: 0, y: 0 });
+          setTimeout(() => (lockedMouseMove.current = false), 5);
+        }}
         onTouchStart={(e) => {
           handleEvent(e);
           handlePinchStart(e);
@@ -115,6 +149,32 @@ const InteractiveCanvas: React.FC = () => {
       >
         <Layer>
           <Rect width={width} height={height} fill="white" />
+
+          {/* {droppedShapes.map((ds) => (
+            <DraggableShape
+              key={ds.id}
+              shape={ds.shape}
+              color={ds.color}
+              x={ds.x}
+              y={ds.y}
+              onDragEnd={(x, y) =>
+                setDroppedShapes((prev) =>
+                  prev.map((item) =>
+                    item.id === ds.id ? { ...item, x, y } : item
+                  )
+                )
+              }
+            />
+          ))} */}
+
+          {hasDragged?.x && (
+            <DraggableShape
+              {...artShape}
+              x={hasDragged.x}
+              y={hasDragged.y}
+              // onDragEnd={(x, y) => onShapeDrop(s.shape, s.color, x, y)}
+            />
+          )}
 
           {circles.map((circle, index) => {
             const springProps = useSpring({
@@ -132,6 +192,15 @@ const InteractiveCanvas: React.FC = () => {
               />
             );
           })}
+
+          {hasDragged === undefined && (
+            <DraggableShape
+              {...artShape}
+              onDragEnd={(x, y) => {
+                setHasDragged({ x, y });
+              }}
+            />
+          )}
         </Layer>
       </Stage>
     </div>
