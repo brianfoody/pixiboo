@@ -4,11 +4,11 @@
 
 // We would like to enhances it with these pieces of functionality.
 
-// 1. Please make the canvas zoomable through a swipe gesture on mobile
+// 1. Please draw a curved arrow pointing toward the artShape in the top left. The arc should go from middle of the screen and arch to top left
 
 // Code:
 import { useRef, useState } from "react";
-import { Stage, Layer, Circle, Rect } from "react-konva";
+import { Stage, Layer, Circle, Rect, Arrow, Text } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
 import DraggableShape from "./DraggableShape";
 import { isMobileDevice } from "./utils";
@@ -17,14 +17,6 @@ type Circle = {
   x: number;
   y: number;
   radius: number;
-};
-
-type DroppedShape = {
-  id: string;
-  shape: string;
-  color: string;
-  x: number;
-  y: number;
 };
 
 const ART_CIRCLE_RADIUS = 75;
@@ -45,6 +37,7 @@ const InteractiveCanvas: React.FC = () => {
   const [hasDragged, setHasDragged] = useState<
     { x: number; y: number } | undefined
   >(undefined);
+  const [dragStarted, setDragStarted] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [circles] = useState<Circle[]>(
     Array.from({ length: circleCount }).map(() => ({
@@ -53,6 +46,10 @@ const InteractiveCanvas: React.FC = () => {
       radius: 20 + Math.random() * 5, // random radius between 20 to 50
     }))
   );
+  const instructionText = "Drag your character to hide it within the artwork";
+  const textSize = width * 0.03; // This will adjust the text size based on the screen width, adjust the multiplier as needed
+  const padding = 10; // space around the text inside the background
+
   const artShape = {
     shape: "circle",
     color: "green",
@@ -100,8 +97,8 @@ const InteractiveCanvas: React.FC = () => {
     setCursorPos(pos);
   };
 
-  console.log("hasDragged");
-  console.log(hasDragged);
+  console.log(dragStarted);
+
   return (
     <div
       style={{
@@ -150,30 +147,8 @@ const InteractiveCanvas: React.FC = () => {
         <Layer>
           <Rect width={width} height={height} fill="white" />
 
-          {/* {droppedShapes.map((ds) => (
-            <DraggableShape
-              key={ds.id}
-              shape={ds.shape}
-              color={ds.color}
-              x={ds.x}
-              y={ds.y}
-              onDragEnd={(x, y) =>
-                setDroppedShapes((prev) =>
-                  prev.map((item) =>
-                    item.id === ds.id ? { ...item, x, y } : item
-                  )
-                )
-              }
-            />
-          ))} */}
-
           {hasDragged?.x && (
-            <DraggableShape
-              {...artShape}
-              x={hasDragged.x}
-              y={hasDragged.y}
-              // onDragEnd={(x, y) => onShapeDrop(s.shape, s.color, x, y)}
-            />
+            <DraggableShape {...artShape} x={hasDragged.x} y={hasDragged.y} />
           )}
 
           {circles.map((circle, index) => {
@@ -196,10 +171,50 @@ const InteractiveCanvas: React.FC = () => {
           {hasDragged === undefined && (
             <DraggableShape
               {...artShape}
+              onDragStart={() => setDragStarted(true)}
               onDragEnd={(x, y) => {
                 setHasDragged({ x, y });
               }}
             />
+          )}
+
+          {dragStarted === false && (
+            <>
+              <Arrow
+                points={[
+                  width / 2,
+                  height / 2,
+                  ART_CIRCLE_START_X + ART_CIRCLE_RADIUS * 1.25,
+                  ART_CIRCLE_START_Y + ART_CIRCLE_RADIUS * 0.5,
+                ]}
+                pointerLength={20}
+                pointerWidth={20}
+                fill="green"
+                stroke="green"
+                strokeWidth={8}
+              />
+              <Rect
+                x={width / 2 - (textSize * instructionText.length) / 4}
+                y={height * 0.8}
+                width={(textSize * instructionText.length) / 2 + padding * 2}
+                height={textSize + padding * 2}
+                fill="green"
+                cornerRadius={5}
+              />
+
+              <Text
+                x={
+                  width / 2 - (textSize * instructionText.length) / 4 + padding
+                }
+                y={height * 0.8 + padding}
+                text={instructionText}
+                fontSize={textSize}
+                fill="white"
+                width={(textSize * instructionText.length) / 2}
+                align="center"
+                wrap="word"
+              />
+            </>
           )}
         </Layer>
       </Stage>
