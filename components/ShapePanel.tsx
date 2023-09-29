@@ -9,9 +9,9 @@ type ShapePanelProps = {
 
 const ShapePanel: React.FC<ShapePanelProps> = ({ onShapeDrop }) => {
   const shapes = [
-    { shape: "circle", color: "green" },
-    { shape: "triangle", color: "blue" },
-    { shape: "square", color: "yellow" },
+    { shape: "circle", fill: "green" },
+    { shape: "triangle", fill: "blue" },
+    { shape: "square", fill: "yellow" },
   ];
 
   return (
@@ -32,7 +32,7 @@ const ShapePanel: React.FC<ShapePanelProps> = ({ onShapeDrop }) => {
           <Layer>
             <DraggableShape
               {...s}
-              onDragEnd={(x, y) => onShapeDrop(s.shape, s.color, x, y)}
+              onDragEnd={(x, y) => onShapeDrop(s.shape, s.fill, x, y)}
             />
           </Layer>
         </Stage>

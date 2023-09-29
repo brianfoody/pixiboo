@@ -4,7 +4,7 @@
 
 // We would like to enhances it with these pieces of functionality.
 
-// 1. Implement the handlePrint button that allows the user to print the artwork when they are happy
+// 1. When the user has finished first drag let's draw another green arrow to the artShape and display "Tap your character to resize it." instruction text in the same place as the other instruction.
 
 // Code:
 import { useRef, useState } from "react";
@@ -25,6 +25,9 @@ const ART_CIRCLE_HEIGHT = 100;
 const ART_CIRCLE_START_Y = ART_CIRCLE_HEIGHT + 25;
 const ART_CIRCLE_START_X = ART_CIRCLE_WIDTH + 25;
 
+const instructionText = "Drag your character to hide it within the artwork";
+const resize_instructionText = "Tap your character to resize it.";
+
 const InteractiveCanvas: React.FC = () => {
   const width = typeof window !== "undefined" ? window.innerWidth : 100;
   const height = typeof window !== "undefined" ? window.innerHeight : 100;
@@ -36,6 +39,7 @@ const InteractiveCanvas: React.FC = () => {
   const circleCount = isMobileDevice() ? 100 : 500;
 
   const [hasDragged, setHasDragged] = useState(false);
+  const [hasSelected, setHasSelected] = useState(false);
 
   const [dragStarted, setDragStarted] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
@@ -50,7 +54,7 @@ const InteractiveCanvas: React.FC = () => {
   const stageRef = useRef(null);
 
   const [isSeleced, setIsSelected] = useState(false);
-  const instructionText = "Drag your character to hide it within the artwork";
+
   const textSize = width * 0.03; // This will adjust the text size based on the screen width, adjust the multiplier as needed
   const padding = 10; // space around the text inside the background
 
@@ -199,6 +203,7 @@ const InteractiveCanvas: React.FC = () => {
               isSelected={isSeleced}
               onSelect={() => {
                 setIsSelected(!isSeleced);
+                setHasSelected(true);
               }}
               onChange={(newAttrs) => {
                 setArtShape({
@@ -246,15 +251,15 @@ const InteractiveCanvas: React.FC = () => {
               <Arrow
                 points={[
                   width / 2,
-                  height / 2,
-                  ART_CIRCLE_START_X + ART_CIRCLE_WIDTH * 1.25,
-                  ART_CIRCLE_START_Y + ART_CIRCLE_HEIGHT * 0.5,
+                  height * 0.8,
+                  artShape.x + artShape.width * 1.05,
+                  artShape.y + artShape.height * 1.05,
                 ]}
                 pointerLength={20}
                 pointerWidth={20}
-                fill="green"
+                fill="white"
                 stroke="green"
-                strokeWidth={8}
+                strokeWidth={6}
               />
               <Rect
                 x={width / 2 - (textSize * instructionText.length) / 4}
@@ -274,6 +279,49 @@ const InteractiveCanvas: React.FC = () => {
                 fontSize={textSize}
                 fill="white"
                 width={(textSize * instructionText.length) / 2}
+                align="center"
+                wrap="word"
+              />
+            </>
+          )}
+
+          {hasDragged && !hasSelected && (
+            <>
+              <Arrow
+                points={[
+                  width / 2,
+                  height * 0.8,
+                  artShape.x + artShape.width * 0.5,
+                  artShape.y + artShape.height * 1.1,
+                ]}
+                pointerLength={20}
+                pointerWidth={20}
+                fill="white"
+                stroke="green"
+                strokeWidth={6}
+              />
+              <Rect
+                x={width / 2 - (textSize * resize_instructionText.length) / 4}
+                y={height * 0.8}
+                width={
+                  (textSize * resize_instructionText.length) / 2 + padding * 2
+                }
+                height={textSize + padding * 2}
+                fill="green"
+                cornerRadius={5}
+              />
+
+              <Text
+                x={
+                  width / 2 -
+                  (textSize * resize_instructionText.length) / 4 +
+                  padding
+                }
+                y={height * 0.8 + padding}
+                text={resize_instructionText}
+                fontSize={textSize}
+                fill="white"
+                width={(textSize * resize_instructionText.length) / 2}
                 align="center"
                 wrap="word"
               />
