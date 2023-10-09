@@ -23,6 +23,7 @@ type CanvasImage = {
   top: number;
   left: number;
   url: string;
+  zIndex: number;
 };
 type CanvasItem = {
   id: string;
@@ -38,6 +39,9 @@ type CanvasItem = {
   zIndex: number;
 };
 
+// Base artworks that you can't hide behind are zIndex to 1
+const MIN_Z_INDEX = 2;
+
 export const convertAssetToImage = ({
   img,
   xScale,
@@ -47,11 +51,13 @@ export const convertAssetToImage = ({
   xScale: number;
   yScale: number;
 }): CanvasImage => {
+  const zMatch = img.match(/z(\d+)_/);
   const heightMatch = img.match(/h(\d+)_/);
   const widthMatch = img.match(/w(\d+)_/);
   const leftMatch = img.match(/l(\d+)_/);
   const topMatch = img.match(/t(\d+)_/);
 
+  const zIndex = zMatch ? parseInt(zMatch[1], 10) : 1;
   const height = heightMatch ? parseInt(heightMatch[1], 10) : 0;
   const width = widthMatch ? parseInt(widthMatch[1], 10) : 0;
   const left = leftMatch ? parseInt(leftMatch[1], 10) : 0;
@@ -63,6 +69,7 @@ export const convertAssetToImage = ({
     top: top * xScale,
     left: left * yScale,
     url: img,
+    zIndex,
   };
 };
 
@@ -114,15 +121,14 @@ const InteractiveCanvas: React.FC = () => {
   const canvasRenderHeight = height - 40;
   const canvasRenderWidth =
     canvasRenderHeight * (canvasActualWidth / canvasActualHeight);
-  const circleCount = isMobileDevice() ? 100 : 20;
 
   const xScale = canvasRenderWidth / canvasActualWidth;
   const yScale = canvasRenderHeight / canvasActualHeight;
 
-  const [baseArtworks] = useState<CanvasItem[]>(
-    carnivalImages.map((asset, i) => {
+  const carnivalAssets = carnivalImages
+    .map((c, i) => {
       const img = convertAssetToImage({
-        img: asset,
+        img: c,
         xScale,
         yScale,
       });
@@ -133,12 +139,14 @@ const InteractiveCanvas: React.FC = () => {
         y: img.top,
         width: img.w,
         height: img.h,
-        zIndex: i + 2,
+        zIndex: img.zIndex,
         img: img.url,
         id: `circle${i + 2}`,
       } as CanvasItem;
     })
-  );
+    .sort((a, b) => {
+      return a.zIndex - b.zIndex;
+    });
 
   const [artShape, setArtShape] = useState<CanvasItem>({
     id: "avatar",
@@ -149,10 +157,22 @@ const InteractiveCanvas: React.FC = () => {
     y: ART_CIRCLE_START_Y,
     width: ART_CIRCLE_WIDTH,
     height: ART_CIRCLE_HEIGHT,
-    zIndex: baseArtworks.length + 2,
+    zIndex: carnivalAssets.length + 2,
   });
 
-  const shapes = [...baseArtworks, artShape].sort(
+  const draggingRect = useRef<CanvasItem>({
+    fill: "red",
+    id: "dragger",
+    shape: "rectangle",
+    userGenerated: false,
+    x: artShape.x,
+    y: artShape.y,
+    zIndex: carnivalAssets.length + 2,
+    width: ART_CIRCLE_WIDTH,
+    height: ART_CIRCLE_HEIGHT,
+  });
+
+  const shapes = [...carnivalAssets, artShape].sort(
     (a, b) => a.zIndex - b.zIndex
   );
 
@@ -197,44 +217,48 @@ const InteractiveCanvas: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const calculateSpring = (pos: { x: number; y: number }) => {
-    const dx = cursorPos.x - pos.x;
-    const dy = cursorPos.y - pos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+  // const calculateSpring = (pos: { x: number; y: number }) => {
+  //   const dx = cursorPos.x - pos.x;
+  //   const dy = cursorPos.y - pos.y;
+  //   const distance = Math.sqrt(dx * dx + dy * dy);
 
-    const FORCEFIELD_RADIUS = Math.max(artShape.width!, artShape.height!);
+  //   const FORCEFIELD_RADIUS = Math.max(artShape.width!, artShape.height!);
 
-    if (distance < FORCEFIELD_RADIUS) {
-      let moveAway = FORCEFIELD_RADIUS * 0;
-      // Direction based on dx and dy
-      const angle = Math.atan2(dy, dx);
-      return {
-        x: pos.x - Math.cos(angle) * moveAway,
-        y: pos.y - Math.sin(angle) * moveAway,
-      };
-    }
-    return pos;
-  };
+  //   if (distance < FORCEFIELD_RADIUS) {
+  //     let moveAway = FORCEFIELD_RADIUS * 0;
+  //     // Direction based on dx and dy
+  //     const angle = Math.atan2(dy, dx);
+  //     return {
+  //       x: pos.x - Math.cos(angle) * moveAway,
+  //       y: pos.y - Math.sin(angle) * moveAway,
+  //     };
+  //   }
+  //   return pos;
+  // };
 
   const handlePinchStart = (e: any) => {
     if (e.evt.touches.length !== 2) return;
   };
 
   const handleEvent = (e: any) => {
-    const stage = e.target.getStage();
-    if (!stage) return;
-
-    // Check if event is a touch event
-    const touchEvent = e.evt.touches && e.evt.touches.length > 0;
-
-    // Use the first touch point if it's a touch event, else use mouse position
-    const pos = touchEvent
-      ? { x: e.evt.touches[0].clientX, y: e.evt.touches[0].clientY }
-      : stage.getPointerPosition();
-
-    setCursorPos(pos);
+    // Not used now - it was used for shapes inteactively avoiding the cursor
+    // const stage = e.target.getStage();
+    // if (!stage) return;
+    // // Check if event is a touch event
+    // const touchEvent = e.evt.touches && e.evt.touches.length > 0;
+    // // Use the first touch point if it's a touch event, else use mouse position
+    // const pos = touchEvent
+    //   ? { x: e.evt.touches[0].clientX, y: e.evt.touches[0].clientY }
+    //   : stage.getPointerPosition();
+    // setCursorPos(pos);
   };
 
+  /**
+   * Calculates which shapes the character is overlapping with to dynamically update it's z inded
+   * We might improve the smarts, right now setting a zIndex of 2 statically would basically be the
+   * same thing I think.
+   * @param props
+   */
   const onDragMove = (props: {
     x: number;
     y: number;
@@ -258,6 +282,7 @@ const InteractiveCanvas: React.FC = () => {
         return overlapCircleRect(item, draggingItem);
       }
     });
+
     const itemsInBoundsIds = itemsInBounds.map((i) => i.id);
 
     const firstItemInBound = shapes.find((s) =>
@@ -266,7 +291,8 @@ const InteractiveCanvas: React.FC = () => {
 
     const newZIndex = (firstItemInBound?.zIndex || 0) - 0.5;
     if (firstItemInBound && artShape.zIndex !== newZIndex) {
-      const newZIndex = Math.max(firstItemInBound.zIndex - 0.5, 1) || 1;
+      const newZIndex =
+        Math.max(firstItemInBound.zIndex - 0.5, MIN_Z_INDEX) || 1;
       console.log(`newZIndex = ${newZIndex}`);
       props.shape.setZIndex(newZIndex);
       props.shape.getLayer()?.batchDraw();
@@ -371,7 +397,8 @@ const InteractiveCanvas: React.FC = () => {
                         ...shape,
                         x,
                         y,
-                        zIndex: Math.max(dragShape.getZIndex(), 1) || 1,
+                        zIndex:
+                          Math.max(dragShape.getZIndex(), MIN_Z_INDEX) || 1,
                       });
                     }}
                   />
@@ -404,9 +431,21 @@ const InteractiveCanvas: React.FC = () => {
                         ...shape,
                         x,
                         y,
-                        zIndex: Math.max(dragShape.getZIndex(), 1) || 1,
+                        zIndex:
+                          Math.max(dragShape.getZIndex(), MIN_Z_INDEX) || 1,
                       });
                     }}
+                  />
+                );
+              } else if (shape.id === "dragger") {
+                return (
+                  <Rect
+                    fill={shape.fill}
+                    x={shape.x}
+                    y={shape.y}
+                    draggable
+                    width={shape.width}
+                    height={shape.height}
                   />
                 );
               } else {
@@ -419,6 +458,7 @@ const InteractiveCanvas: React.FC = () => {
                     height={shape.height}
                     x={shape.x}
                     y={shape.y}
+                    listening={false}
                   />
                 );
                 // const springProps = useSpring({
