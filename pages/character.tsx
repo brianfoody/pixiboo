@@ -1,5 +1,5 @@
-import { Button } from "../@/components/ui/button";
-import { Input } from "../@/components/ui/input";
+// import { Button } from "../@/components/ui/button";
+// import { Input } from "../@/components/ui/input";
 
 // pages/character.tsx
 const Home: React.FC = () => {
@@ -14,8 +14,8 @@ const Home: React.FC = () => {
         alignItems: "center",
       }}
     >
-      <Input placeholder="Type in your characters description to begin generating" />
-      <Button>Generate</Button>
+      {/* <Input placeholder="Type in your characters description to begin generating" />
+      <Button>Generate</Button> */}
     </div>
   );
 };
