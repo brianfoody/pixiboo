@@ -15,17 +15,27 @@ const ResizableArtwork = ({
   isSelected,
   onSelect,
   onChange,
+  resizable,
   image,
   onDragEnd,
   onDragStart,
   onDragMove,
+  onMouseOver,
 }: {
   shapeProps: ShapeProps;
   isSelected: boolean;
   onSelect: () => void;
   image: string;
   onChange: (props: ShapeProps) => void;
-  onDragStart?: (x: number, y: number) => void;
+  resizable: boolean;
+  onMouseOver: () => void;
+  onDragStart?: (props: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    shape: Shape<ShapeConfig>;
+  }) => void;
   onDragEnd?: (props: {
     x: number;
     y: number;
@@ -61,7 +71,16 @@ const ResizableArtwork = ({
         ref={shapeRef}
         {...shapeProps}
         draggable
-        onDragStart={(e) => onDragStart?.(e.target.x(), e.target.y())}
+        onMouseEnter={onMouseOver}
+        onDragStart={(e) =>
+          onDragStart?.({
+            x: e.target.x(),
+            y: e.target.y(),
+            w: e.target.width(),
+            h: e.target.height(),
+            shape: e.target as Shape<ShapeConfig>,
+          })
+        }
         onDragMove={(e) =>
           onDragMove?.({
             x: e.target.x(),
@@ -115,6 +134,9 @@ const ResizableArtwork = ({
           keepRatio={true}
           centeredScaling
           boundBoxFunc={(oldBox, newBox) => {
+            if (!resizable) {
+              return oldBox;
+            }
             // limit resize
             if (newBox.width < 15 || newBox.height < 15) {
               return oldBox;

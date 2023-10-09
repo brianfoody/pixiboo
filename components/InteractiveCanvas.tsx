@@ -15,7 +15,6 @@ import ResizableArtwork from "./ResizableArtwork";
 import { Shape, ShapeConfig } from "konva/lib/Shape";
 import { carnivalImages } from "./carnivalArtwork";
 import useImage from "use-image";
-import DraggableArtwork from "./DraggableArtwork";
 
 type CanvasImage = {
   w: number;
@@ -175,7 +174,7 @@ const InteractiveCanvas: React.FC = () => {
 
   const stageRef = useRef(null);
 
-  const [isSeleced, setIsSelected] = useState(false);
+  const [isSelected, setIsSelected] = useState(true);
 
   const textSize = canvasRenderWidth * 0.035; // This will adjust the text size based on the screen width, adjust the multiplier as needed
   const padding = canvasRenderWidth * 0.03; // space around the text inside the background
@@ -285,7 +284,6 @@ const InteractiveCanvas: React.FC = () => {
     if (firstItemInBound && artShape.zIndex !== newZIndex) {
       const newZIndex =
         Math.max(firstItemInBound.zIndex - 0.5, MIN_Z_INDEX) || 1;
-      console.log(`newZIndex = ${newZIndex}`);
       props.shape.setZIndex(newZIndex);
       props.shape.getLayer()?.batchDraw();
     }
@@ -371,31 +369,7 @@ const InteractiveCanvas: React.FC = () => {
             />
 
             {shapes.map((shape, index) => {
-              if (shape.userGenerated && !hasDragged) {
-                return (
-                  <DraggableArtwork
-                    height={shape.height}
-                    width={shape.width}
-                    image={shape.img!}
-                    x={shape.x}
-                    y={shape.y}
-                    key={index}
-                    onDragStart={() => setDragStarted(true)}
-                    onDragMove={onDragMove}
-                    onDragEnd={({ x, y, shape: dragShape }) => {
-                      setHasDragged(true);
-
-                      setArtShape({
-                        ...shape,
-                        x,
-                        y,
-                        zIndex:
-                          Math.max(dragShape.getZIndex(), MIN_Z_INDEX) || 1,
-                      });
-                    }}
-                  />
-                );
-              } else if (shape.userGenerated && hasDragged) {
+              if (shape.userGenerated) {
                 return (
                   <ResizableArtwork
                     key={index}
@@ -405,11 +379,20 @@ const InteractiveCanvas: React.FC = () => {
                       x: shape.x,
                       y: shape.y,
                     }}
+                    resizable={hasDragged}
                     image={shape.img!}
-                    isSelected={isSeleced}
+                    isSelected={isSelected}
+                    onMouseOver={() => {
+                      if (!hasDragged) {
+                        setIsSelected(false);
+                      }
+                    }}
                     onSelect={() => {
-                      setIsSelected(!isSeleced);
-                      setHasSelected(true);
+                      console.log("onselect");
+                      if (hasSelected) {
+                        setHasSelected(true);
+                      }
+                      setIsSelected(true);
                     }}
                     onChange={(newAttrs) => {
                       setArtShape({
@@ -417,8 +400,13 @@ const InteractiveCanvas: React.FC = () => {
                         ...newAttrs,
                       });
                     }}
+                    onDragStart={({ shape }) => {
+                      setDragStarted(true);
+                    }}
                     onDragMove={onDragMove}
                     onDragEnd={({ x, y, shape: dragShape }) => {
+                      setHasDragged(true);
+
                       setArtShape({
                         ...shape,
                         x,
