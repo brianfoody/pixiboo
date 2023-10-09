@@ -103,7 +103,6 @@ const ResizableArtwork = ({
             shape: e.target as any,
           });
         }}
-        onMouseOver={() => console.log("mouse over")}
         onTransformEnd={(e) => {
           // transformer is changing scale of the node
           // and NOT its width or height

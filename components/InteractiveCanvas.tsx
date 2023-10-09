@@ -208,6 +208,28 @@ const InteractiveCanvas: React.FC = () => {
     }, 10);
   };
 
+  useEffect(() => {
+    if (!hasDragged) return;
+
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem("hasDragged", "true");
+  }, [hasDragged]);
+
+  useEffect(() => {
+    if (!hasSelected) return;
+
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem("hasSelected", "true");
+  }, [hasSelected]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setHasSelected(window.localStorage.getItem("hasSelected") == "true");
+    setHasDragged(window.localStorage.getItem("hasDragged") == "true");
+  }, []);
+
   // const calculateSpring = (pos: { x: number; y: number }) => {
   //   const dx = cursorPos.x - pos.x;
   //   const dy = cursorPos.y - pos.y;
@@ -388,8 +410,7 @@ const InteractiveCanvas: React.FC = () => {
                       }
                     }}
                     onSelect={() => {
-                      console.log("onselect");
-                      if (hasSelected) {
+                      if (hasDragged) {
                         setHasSelected(true);
                       }
                       setIsSelected(true);
@@ -454,49 +475,53 @@ const InteractiveCanvas: React.FC = () => {
             })}
 
             {/* Add back for instructions using local storage to only show once */}
-            {dragStarted === false && artShape.width && (
-              <>
-                <Arrow
-                  points={[
-                    canvasRenderWidth / 2,
-                    canvasRenderHeight * 0.8,
-                    artShape.x + artShape.width! * 1.05,
-                    artShape.y + artShape.height! * 1.05,
-                  ]}
-                  pointerLength={20}
-                  pointerWidth={20}
-                  fill="black"
-                  stroke="black"
-                  strokeWidth={6}
-                />
-                <Rect
-                  x={
-                    canvasRenderWidth / 2 -
-                    (textSize * instructionText.length) / 4
-                  }
-                  y={canvasRenderHeight * 0.8}
-                  width={(textSize * instructionText.length) / 2 + padding * 2}
-                  height={textSize + padding * 2}
-                  fill="black"
-                  cornerRadius={5}
-                />
+            {hasDragged === false &&
+              dragStarted === false &&
+              artShape.width && (
+                <>
+                  <Arrow
+                    points={[
+                      canvasRenderWidth / 2,
+                      canvasRenderHeight * 0.8,
+                      artShape.x + artShape.width! * 1.05,
+                      artShape.y + artShape.height! * 1.05,
+                    ]}
+                    pointerLength={20}
+                    pointerWidth={20}
+                    fill="black"
+                    stroke="black"
+                    strokeWidth={6}
+                  />
+                  <Rect
+                    x={
+                      canvasRenderWidth / 2 -
+                      (textSize * instructionText.length) / 4
+                    }
+                    y={canvasRenderHeight * 0.8}
+                    width={
+                      (textSize * instructionText.length) / 2 + padding * 2
+                    }
+                    height={textSize + padding * 2}
+                    fill="black"
+                    cornerRadius={5}
+                  />
 
-                <Text
-                  x={
-                    canvasRenderWidth / 2 -
-                    (textSize * instructionText.length) / 4 +
-                    padding
-                  }
-                  y={canvasRenderHeight * 0.8 + padding}
-                  text={instructionText}
-                  fontSize={textSize}
-                  fill="white"
-                  width={(textSize * instructionText.length) / 2}
-                  align="center"
-                  wrap="word"
-                />
-              </>
-            )}
+                  <Text
+                    x={
+                      canvasRenderWidth / 2 -
+                      (textSize * instructionText.length) / 4 +
+                      padding
+                    }
+                    y={canvasRenderHeight * 0.8 + padding}
+                    text={instructionText}
+                    fontSize={textSize}
+                    fill="white"
+                    width={(textSize * instructionText.length) / 2}
+                    align="center"
+                    wrap="word"
+                  />
+                </>
+              )}
 
             {hasDragged && !hasSelected && (
               <>
