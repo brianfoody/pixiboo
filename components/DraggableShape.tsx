@@ -1,3 +1,4 @@
+import { Shape, ShapeConfig } from "konva/lib/Shape";
 import { Rect } from "react-konva";
 
 type DraggableShapeProps = {
@@ -7,7 +8,18 @@ type DraggableShapeProps = {
   width?: number;
   height?: number;
   onDragStart?: (x: number, y: number) => void;
-  onDragEnd?: (x: number, y: number) => void;
+  onDragMove?: (props: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    shape: Shape<ShapeConfig>;
+  }) => void;
+  onDragEnd?: (props: {
+    x: number;
+    y: number;
+    shape: Shape<ShapeConfig>;
+  }) => void;
 };
 
 const DraggableShape: React.FC<DraggableShapeProps> = ({
@@ -18,6 +30,7 @@ const DraggableShape: React.FC<DraggableShapeProps> = ({
   height = 70,
   onDragEnd,
   onDragStart,
+  onDragMove,
 }) => {
   return (
     <Rect
@@ -28,7 +41,22 @@ const DraggableShape: React.FC<DraggableShapeProps> = ({
       x={x}
       y={y}
       onDragStart={(e) => onDragStart?.(e.target.x(), e.target.y())}
-      onDragEnd={(e) => onDragEnd?.(e.target.x(), e.target.y())}
+      onDragEnd={(e) =>
+        onDragEnd?.({
+          x: e.target.x(),
+          y: e.target.y(),
+          shape: e.target as any,
+        })
+      }
+      onDragMove={(e) => {
+        onDragMove?.({
+          x: e.target.x(),
+          y: e.target.y(),
+          w: e.target.width(),
+          h: e.target.height(),
+          shape: e.target as Shape<ShapeConfig>,
+        });
+      }}
     />
   );
 };

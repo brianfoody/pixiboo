@@ -1,3 +1,4 @@
+import { Shape, ShapeConfig } from "konva/lib/Shape";
 import { Fragment, useEffect, useRef } from "react";
 import { Rect, Transformer } from "react-konva";
 
@@ -16,13 +17,25 @@ const ResizableCircle = ({
   onChange,
   onDragEnd,
   onDragStart,
+  onDragMove,
 }: {
   shapeProps: ShapeProps;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (props: ShapeProps) => void;
   onDragStart?: (x: number, y: number) => void;
-  onDragEnd?: (x: number, y: number) => void;
+  onDragEnd?: (props: {
+    x: number;
+    y: number;
+    shape: Shape<ShapeConfig>;
+  }) => void;
+  onDragMove?: (props: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    shape: Shape<ShapeConfig>;
+  }) => void;
 }) => {
   const shapeRef = useRef<any | undefined>();
   const trRef = useRef<any | undefined>();
@@ -46,6 +59,15 @@ const ResizableCircle = ({
         {...shapeProps}
         draggable
         onDragStart={(e) => onDragStart?.(e.target.x(), e.target.y())}
+        onDragMove={(e) =>
+          onDragMove?.({
+            x: e.target.x(),
+            y: e.target.y(),
+            w: e.target.width(),
+            h: e.target.height(),
+            shape: e.target as Shape<ShapeConfig>,
+          })
+        }
         onDragEnd={(e) => {
           onChange({
             ...shapeProps,
@@ -53,7 +75,11 @@ const ResizableCircle = ({
             y: e.target.y(),
           });
 
-          onDragEnd?.(e.target.x(), e.target.y());
+          onDragEnd?.({
+            x: e.target.x(),
+            y: e.target.y(),
+            shape: e.target as any,
+          });
         }}
         onTransformEnd={(e) => {
           // transformer is changing scale of the node

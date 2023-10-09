@@ -7,65 +7,171 @@
 // 1. When the user has finished first drag let's draw another green arrow to the artShape and display "Tap your character to resize it." instruction text in the same place as the other instruction.
 
 // Code:
-import { useRef, useState } from "react";
-import { Stage, Layer, Circle, Rect, Arrow, Text } from "react-konva";
+import { useEffect, useRef, useState } from "react";
+import { Stage, Layer, Circle, Rect, Arrow, Text, Image } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
 import DraggableShape from "./DraggableShape";
 import { isMobileDevice } from "./utils";
 import ResizableCircle from "./ResizableCircle";
+import { Shape, ShapeConfig } from "konva/lib/Shape";
+import { carnivalImages } from "./carnivalArtwork";
+import useImage from "use-image";
 
-type Circle = {
+type CanvasImage = {
+  w: number;
+  h: number;
+  top: number;
+  left: number;
+  url: string;
+};
+type CanvasItem = {
+  id: string;
+  userGenerated: boolean;
+  shape: string;
+  img?: string;
+  fill: string;
   x: number;
   y: number;
-  radius: number;
+  width?: number;
+  height?: number;
+  radius?: number;
+  zIndex: number;
 };
 
-const ART_CIRCLE_WIDTH = 75;
-const ART_CIRCLE_HEIGHT = 100;
+export const convertAssetToImage = ({
+  img,
+  xScale,
+  yScale,
+}: {
+  img: string;
+  xScale: number;
+  yScale: number;
+}): CanvasImage => {
+  const heightMatch = img.match(/h(\d+)_/);
+  const widthMatch = img.match(/w(\d+)_/);
+  const leftMatch = img.match(/l(\d+)_/);
+  const topMatch = img.match(/t(\d+)_/);
+
+  const height = heightMatch ? parseInt(heightMatch[1], 10) : 0;
+  const width = widthMatch ? parseInt(widthMatch[1], 10) : 0;
+  const left = leftMatch ? parseInt(leftMatch[1], 10) : 0;
+  const top = topMatch ? parseInt(topMatch[1], 10) : 0;
+
+  return {
+    w: width * xScale,
+    h: height * yScale,
+    top: top * xScale,
+    left: left * yScale,
+    url: img,
+  };
+};
+
+const ART_CIRCLE_WIDTH = 40;
+const ART_CIRCLE_HEIGHT = 70;
 const ART_CIRCLE_START_Y = ART_CIRCLE_HEIGHT + 25;
 const ART_CIRCLE_START_X = ART_CIRCLE_WIDTH + 25;
 
 const instructionText = "Drag your character to hide it within the artwork";
 const resize_instructionText = "Tap your character to resize it.";
 
+const clamp = function (num: number, min: number, max: number): number {
+  return Math.max(min, Math.min(num, max));
+};
+
+const overlapCircleCircle = (c1: CanvasItem, c2: CanvasItem): boolean => {
+  const dx = c1.x - c2.x;
+  const dy = c1.y - c2.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  return distance < c1.radius! + c2.radius!;
+};
+
+const overlapRectRect = (r1: CanvasItem, r2: CanvasItem): boolean => {
+  return (
+    r1.x < r2.x + r2.width! &&
+    r1.x + r1.width! > r2.x &&
+    r1.y < r2.y + r2.height! &&
+    r1.y + r1.height! > r2.y
+  );
+};
+
+const overlapCircleRect = (c: CanvasItem, r: CanvasItem): boolean => {
+  const closestX = clamp(c.x, r.x, r.x + r.width!);
+  const closestY = clamp(c.y, r.y, r.y + r.height!);
+
+  const dx = c.x - closestX;
+  const dy = c.y - closestY;
+
+  return dx * dx + dy * dy <= c.radius! * c.radius!;
+};
+
 const InteractiveCanvas: React.FC = () => {
   const width = typeof window !== "undefined" ? window.innerWidth : 100;
   const height = typeof window !== "undefined" ? window.innerHeight : 100;
 
+  const canvasActualWidth = 2160;
+  const canvasActualHeight = 3840;
+
+  const canvasRenderHeight = height - 40;
+  const canvasRenderWidth =
+    canvasRenderHeight * (canvasActualWidth / canvasActualHeight);
+  const circleCount = isMobileDevice() ? 100 : 20;
+
+  const xScale = canvasRenderWidth / canvasActualWidth;
+  const yScale = canvasRenderHeight / canvasActualHeight;
+
+  const [baseArtworks] = useState<CanvasItem[]>(
+    carnivalImages.map((asset, i) => {
+      const img = convertAssetToImage({
+        img: asset,
+        xScale,
+        yScale,
+      });
+      return {
+        userGenerated: false,
+        shape: "rectangle",
+        x: img.left,
+        y: img.top,
+        width: img.w,
+        height: img.h,
+        zIndex: i + 2,
+        img: img.url,
+        id: `circle${i + 2}`,
+      } as CanvasItem;
+    })
+  );
+
+  const [artShape, setArtShape] = useState<CanvasItem>({
+    id: "avatar",
+    userGenerated: true,
+    shape: "rectangle",
+    fill: "black",
+    x: ART_CIRCLE_START_X,
+    y: ART_CIRCLE_START_Y,
+    width: ART_CIRCLE_WIDTH,
+    height: ART_CIRCLE_HEIGHT,
+    zIndex: baseArtworks.length + 2,
+  });
+
+  const shapes = [...baseArtworks, artShape].sort(
+    (a, b) => a.zIndex - b.zIndex
+  );
+
   // When we lift the cursor from a drag we also kick off a cursor event.
   // This adds a timed lock so that things snap back nicely
   const lockedMouseMove = useRef(false);
-
-  const circleCount = isMobileDevice() ? 100 : 500;
 
   const [hasDragged, setHasDragged] = useState(false);
   const [hasSelected, setHasSelected] = useState(false);
 
   const [dragStarted, setDragStarted] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [circles] = useState<Circle[]>(
-    Array.from({ length: circleCount }).map(() => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: 20 + Math.random() * 5, // random radius between 20 to 50
-    }))
-  );
 
   const stageRef = useRef(null);
 
   const [isSeleced, setIsSelected] = useState(false);
 
-  const textSize = width * 0.03; // This will adjust the text size based on the screen width, adjust the multiplier as needed
-  const padding = 10; // space around the text inside the background
-
-  const [artShape, setArtShape] = useState({
-    shape: "circle",
-    fill: "green",
-    x: ART_CIRCLE_START_X,
-    y: ART_CIRCLE_START_Y,
-    width: ART_CIRCLE_WIDTH,
-    height: ART_CIRCLE_HEIGHT,
-  });
+  const textSize = canvasRenderWidth * 0.035; // This will adjust the text size based on the screen width, adjust the multiplier as needed
+  const padding = canvasRenderWidth * 0.03; // space around the text inside the background
 
   const handlePrint = () => {
     if (!stageRef.current) return;
@@ -90,15 +196,16 @@ const InteractiveCanvas: React.FC = () => {
     // Remove the anchor from the DOM
     document.body.removeChild(link);
   };
+
   const calculateSpring = (pos: { x: number; y: number }) => {
     const dx = cursorPos.x - pos.x;
     const dy = cursorPos.y - pos.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    const FORCEFIELD_RADIUS = Math.max(artShape.width, artShape.height);
+    const FORCEFIELD_RADIUS = Math.max(artShape.width!, artShape.height!);
 
     if (distance < FORCEFIELD_RADIUS) {
-      let moveAway = FORCEFIELD_RADIUS * 0.9;
+      let moveAway = FORCEFIELD_RADIUS * 0;
       // Direction based on dx and dy
       const angle = Math.atan2(dy, dx);
       return {
@@ -111,9 +218,6 @@ const InteractiveCanvas: React.FC = () => {
 
   const handlePinchStart = (e: any) => {
     if (e.evt.touches.length !== 2) return;
-
-    const dx = e.evt.touches[0].clientX - e.evt.touches[1].clientX;
-    const dy = e.evt.touches[0].clientY - e.evt.touches[1].clientY;
   };
 
   const handleEvent = (e: any) => {
@@ -131,12 +235,50 @@ const InteractiveCanvas: React.FC = () => {
     setCursorPos(pos);
   };
 
+  const onDragMove = (props: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    shape: Shape<ShapeConfig>;
+  }) => {
+    const { x, y, w, h } = props;
+    const draggingItem: CanvasItem = {
+      ...artShape,
+      x,
+      y,
+      width: w,
+      height: h,
+    };
+
+    const itemsInBounds: CanvasItem[] = shapes.filter((item) => {
+      if (item.shape === "rectangle") {
+        return overlapRectRect(draggingItem, item);
+      } else if (item.shape === "circle") {
+        return overlapCircleRect(item, draggingItem);
+      }
+    });
+    const itemsInBoundsIds = itemsInBounds.map((i) => i.id);
+
+    const firstItemInBound = shapes.find((s) =>
+      itemsInBoundsIds.includes(s.id)
+    );
+
+    const newZIndex = (firstItemInBound?.zIndex || 0) - 0.5;
+    if (firstItemInBound && artShape.zIndex !== newZIndex) {
+      const newZIndex = Math.max(firstItemInBound.zIndex - 0.5, 1) || 1;
+      console.log(`newZIndex = ${newZIndex}`);
+      props.shape.setZIndex(newZIndex);
+      props.shape.getLayer()?.batchDraw();
+    }
+  };
+
   return (
     <div
-      style={{
-        width,
-        height,
-      }}
+    // style={{
+    //   width,
+    //   height,
+    // }}
     >
       <div
         style={{
@@ -164,171 +306,237 @@ const InteractiveCanvas: React.FC = () => {
       </div>
 
       {/* <ShapePanel onShapeDrop={handleShapeDrop} /> */}
-      <Stage
-        ref={stageRef}
-        width={width}
-        height={height - 40}
-        onMouseMove={(e) => {
-          if (lockedMouseMove.current) return;
-          handleEvent(e);
-        }}
-        onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
-        onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
-        onDragStart={() => (lockedMouseMove.current = true)}
-        onDragMove={(e) => handleEvent(e)}
-        onDragEnd={() => {
-          setCursorPos({ x: 0, y: 0 });
-          setTimeout(() => (lockedMouseMove.current = false), 5);
-        }}
-        onTouchStart={(e) => {
-          handleEvent(e);
-          handlePinchStart(e);
-        }}
-        onTouchMove={(e) => {
-          handleEvent(e);
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <Layer>
-          <Rect
-            width={width}
-            height={height}
-            fill="white"
-            onClick={() => setIsSelected(false)}
-            onTap={() => setIsSelected(false)}
-          />
-
-          {hasDragged && (
-            <ResizableCircle
-              shapeProps={artShape}
-              isSelected={isSeleced}
-              onSelect={() => {
-                setIsSelected(!isSeleced);
-                setHasSelected(true);
-              }}
-              onChange={(newAttrs) => {
-                setArtShape({
-                  ...artShape,
-                  ...newAttrs,
-                });
-              }}
+        <Stage
+          ref={stageRef}
+          width={canvasRenderWidth}
+          height={canvasRenderHeight}
+          onMouseMove={(e) => {
+            if (lockedMouseMove.current) return;
+            handleEvent(e);
+          }}
+          onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
+          onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+          onDragStart={() => (lockedMouseMove.current = true)}
+          onDragMove={(e) => handleEvent(e)}
+          onDragEnd={() => {
+            setCursorPos({ x: 0, y: 0 });
+            setTimeout(() => (lockedMouseMove.current = false), 5);
+          }}
+          onTouchStart={(e) => {
+            handleEvent(e);
+            handlePinchStart(e);
+          }}
+          onTouchMove={(e) => {
+            handleEvent(e);
+          }}
+          style={{
+            borderWidth: 1,
+            borderColor: "green",
+          }}
+        >
+          <Layer>
+            <Rect
+              width={canvasRenderWidth}
+              height={canvasRenderHeight}
+              fill="#9EC517"
+              onClick={() => setIsSelected(false)}
+              onTap={() => setIsSelected(false)}
             />
-          )}
 
-          {circles.map((circle, index) => {
-            const springProps = useSpring({
-              ...calculateSpring(circle),
-              config: { tension: 170, friction: 20 },
-            });
+            {shapes.map((shape, index) => {
+              if (shape.userGenerated && !hasDragged) {
+                return (
+                  <DraggableShape
+                    fill={shape.fill}
+                    height={shape.height}
+                    width={shape.width}
+                    x={shape.x}
+                    y={shape.y}
+                    key={index}
+                    onDragStart={() => setDragStarted(true)}
+                    onDragMove={onDragMove}
+                    onDragEnd={({ x, y, shape: dragShape }) => {
+                      setHasDragged(true);
 
-            return (
-              // @ts-ignore
-              <animated.Circle
-                key={index}
-                radius={circle.radius}
-                fill="black"
-                {...springProps}
-              />
-            );
-          })}
+                      setArtShape({
+                        ...shape,
+                        x,
+                        y,
+                        zIndex: Math.max(dragShape.getZIndex(), 1) || 1,
+                      });
+                    }}
+                  />
+                );
+              } else if (shape.userGenerated && hasDragged) {
+                return (
+                  <ResizableCircle
+                    key={index}
+                    shapeProps={{
+                      fill: shape.fill,
+                      height: shape.height!,
+                      width: shape.width!,
+                      x: shape.x,
+                      y: shape.y,
+                    }}
+                    isSelected={isSeleced}
+                    onSelect={() => {
+                      setIsSelected(!isSeleced);
+                      setHasSelected(true);
+                    }}
+                    onChange={(newAttrs) => {
+                      setArtShape({
+                        ...artShape,
+                        ...newAttrs,
+                      });
+                    }}
+                    onDragMove={onDragMove}
+                    onDragEnd={({ x, y, shape: dragShape }) => {
+                      setArtShape({
+                        ...shape,
+                        x,
+                        y,
+                        zIndex: Math.max(dragShape.getZIndex(), 1) || 1,
+                      });
+                    }}
+                  />
+                );
+              } else {
+                const [image] = useImage(shape.img!);
+                return (
+                  <Image
+                    image={image}
+                    key={shape.id}
+                    width={shape.width}
+                    height={shape.height}
+                    x={shape.x}
+                    y={shape.y}
+                  />
+                );
+                // const springProps = useSpring({
+                //   ...calculateSpring(shape),
+                //   config: { tension: 170, friction: 20 },
+                // });
 
-          {!hasDragged && (
-            <DraggableShape
-              {...artShape}
-              onDragStart={() => setDragStarted(true)}
-              onDragEnd={(x, y) => {
-                setHasDragged(true);
-                setArtShape({
-                  ...artShape,
-                  x,
-                  y,
-                });
-              }}
-            />
-          )}
+                // return (
+                //   // @ts-ignore
+                //   <animated.Circle
+                //     key={index}
+                //     radius={shape.radius}
+                //     fill="black"
+                //     stroke="blue"
+                //     strokeWidth={4}
+                //     // x={shape.x}
+                //     // y={shape.y}
+                //     name={shape.id}
+                //     zIndex={shape.zIndex}
+                //     {...springProps}
+                //   />
+                // );
+              }
+            })}
 
-          {dragStarted === false && (
-            <>
-              <Arrow
-                points={[
-                  width / 2,
-                  height * 0.8,
-                  artShape.x + artShape.width * 1.05,
-                  artShape.y + artShape.height * 1.05,
-                ]}
-                pointerLength={20}
-                pointerWidth={20}
-                fill="white"
-                stroke="green"
-                strokeWidth={6}
-              />
-              <Rect
-                x={width / 2 - (textSize * instructionText.length) / 4}
-                y={height * 0.8}
-                width={(textSize * instructionText.length) / 2 + padding * 2}
-                height={textSize + padding * 2}
-                fill="green"
-                cornerRadius={5}
-              />
+            {/* Add back for instructions using local storage to only show once */}
+            {dragStarted === false && artShape.width && (
+              <>
+                <Arrow
+                  points={[
+                    canvasRenderWidth / 2,
+                    canvasRenderHeight * 0.8,
+                    artShape.x + artShape.width! * 1.05,
+                    artShape.y + artShape.height! * 1.05,
+                  ]}
+                  pointerLength={20}
+                  pointerWidth={20}
+                  fill="black"
+                  stroke="black"
+                  strokeWidth={6}
+                />
+                <Rect
+                  x={
+                    canvasRenderWidth / 2 -
+                    (textSize * instructionText.length) / 4
+                  }
+                  y={canvasRenderHeight * 0.8}
+                  width={(textSize * instructionText.length) / 2 + padding * 2}
+                  height={textSize + padding * 2}
+                  fill="black"
+                  cornerRadius={5}
+                />
 
-              <Text
-                x={
-                  width / 2 - (textSize * instructionText.length) / 4 + padding
-                }
-                y={height * 0.8 + padding}
-                text={instructionText}
-                fontSize={textSize}
-                fill="white"
-                width={(textSize * instructionText.length) / 2}
-                align="center"
-                wrap="word"
-              />
-            </>
-          )}
+                <Text
+                  x={
+                    canvasRenderWidth / 2 -
+                    (textSize * instructionText.length) / 4 +
+                    padding
+                  }
+                  y={canvasRenderHeight * 0.8 + padding}
+                  text={instructionText}
+                  fontSize={textSize}
+                  fill="white"
+                  width={(textSize * instructionText.length) / 2}
+                  align="center"
+                  wrap="word"
+                />
+              </>
+            )}
 
-          {hasDragged && !hasSelected && (
-            <>
-              <Arrow
-                points={[
-                  width / 2,
-                  height * 0.8,
-                  artShape.x + artShape.width * 0.5,
-                  artShape.y + artShape.height * 1.1,
-                ]}
-                pointerLength={20}
-                pointerWidth={20}
-                fill="white"
-                stroke="green"
-                strokeWidth={6}
-              />
-              <Rect
-                x={width / 2 - (textSize * resize_instructionText.length) / 4}
-                y={height * 0.8}
-                width={
-                  (textSize * resize_instructionText.length) / 2 + padding * 2
-                }
-                height={textSize + padding * 2}
-                fill="green"
-                cornerRadius={5}
-              />
+            {hasDragged && !hasSelected && (
+              <>
+                <Arrow
+                  points={[
+                    canvasRenderWidth / 2,
+                    canvasRenderHeight * 0.8,
+                    artShape.x + artShape.width! * 0.5,
+                    artShape.y + artShape.height! * 1.1,
+                  ]}
+                  pointerLength={20}
+                  pointerWidth={20}
+                  fill="black"
+                  stroke="blck"
+                  strokeWidth={6}
+                />
+                <Rect
+                  x={
+                    canvasRenderWidth / 2 -
+                    (textSize * resize_instructionText.length) / 4
+                  }
+                  y={canvasRenderHeight * 0.8}
+                  width={
+                    (textSize * resize_instructionText.length) / 2 + padding * 2
+                  }
+                  height={textSize + padding * 2}
+                  fill="blck"
+                  cornerRadius={5}
+                />
 
-              <Text
-                x={
-                  width / 2 -
-                  (textSize * resize_instructionText.length) / 4 +
-                  padding
-                }
-                y={height * 0.8 + padding}
-                text={resize_instructionText}
-                fontSize={textSize}
-                fill="white"
-                width={(textSize * resize_instructionText.length) / 2}
-                align="center"
-                wrap="word"
-              />
-            </>
-          )}
-        </Layer>
-      </Stage>
+                <Text
+                  x={
+                    canvasRenderWidth / 2 -
+                    (textSize * resize_instructionText.length) / 4 +
+                    padding
+                  }
+                  y={canvasRenderHeight * 0.8 + padding}
+                  text={resize_instructionText}
+                  fontSize={textSize}
+                  fill="white"
+                  width={(textSize * resize_instructionText.length) / 2}
+                  align="center"
+                  wrap="word"
+                />
+              </>
+            )}
+          </Layer>
+        </Stage>
+      </div>
     </div>
   );
 };
