@@ -1,8 +1,9 @@
 import { Shape, ShapeConfig } from "konva/lib/Shape";
-import { Rect } from "react-konva";
+import { Image } from "react-konva";
+import useImage from "use-image";
 
-type DraggableShapeProps = {
-  fill: string;
+type DraggableArtworkProps = {
+  image: string;
   x?: number;
   y?: number;
   width?: number;
@@ -22,8 +23,8 @@ type DraggableShapeProps = {
   }) => void;
 };
 
-const DraggableShape: React.FC<DraggableShapeProps> = ({
-  fill,
+const DraggableArtwork: React.FC<DraggableArtworkProps> = ({
+  image,
   x = 0,
   y = 0,
   width = 50,
@@ -32,12 +33,13 @@ const DraggableShape: React.FC<DraggableShapeProps> = ({
   onDragStart,
   onDragMove,
 }) => {
+  const [usedImage] = useImage(image);
   return (
-    <Rect
+    <Image
       draggable
       width={width}
       height={height}
-      fill={fill}
+      image={usedImage}
       x={x}
       y={y}
       onDragStart={(e) => onDragStart?.(e.target.x(), e.target.y())}
@@ -61,4 +63,4 @@ const DraggableShape: React.FC<DraggableShapeProps> = ({
   );
 };
 
-export default DraggableShape;
+export default DraggableArtwork;

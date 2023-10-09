@@ -10,12 +10,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, Layer, Circle, Rect, Arrow, Text, Image } from "react-konva";
 import { useSpring, animated } from "@react-spring/konva";
-import DraggableShape from "./DraggableShape";
 import { isMobileDevice } from "./utils";
-import ResizableCircle from "./ResizableCircle";
+import ResizableArtwork from "./ResizableArtwork";
 import { Shape, ShapeConfig } from "konva/lib/Shape";
 import { carnivalImages } from "./carnivalArtwork";
 import useImage from "use-image";
+import DraggableArtwork from "./DraggableArtwork";
 
 type CanvasImage = {
   w: number;
@@ -30,7 +30,6 @@ type CanvasItem = {
   userGenerated: boolean;
   shape: string;
   img?: string;
-  fill: string;
   x: number;
   y: number;
   width?: number;
@@ -118,7 +117,7 @@ const InteractiveCanvas: React.FC = () => {
   const canvasActualWidth = 2160;
   const canvasActualHeight = 3840;
 
-  const canvasRenderHeight = height - 40;
+  const canvasRenderHeight = height - 40 - 20;
   const canvasRenderWidth =
     canvasRenderHeight * (canvasActualWidth / canvasActualHeight);
 
@@ -152,24 +151,12 @@ const InteractiveCanvas: React.FC = () => {
     id: "avatar",
     userGenerated: true,
     shape: "rectangle",
-    fill: "black",
+    img: "carnival/avatar.png",
     x: ART_CIRCLE_START_X,
     y: ART_CIRCLE_START_Y,
     width: ART_CIRCLE_WIDTH,
     height: ART_CIRCLE_HEIGHT,
     zIndex: carnivalAssets.length + 2,
-  });
-
-  const draggingRect = useRef<CanvasItem>({
-    fill: "red",
-    id: "dragger",
-    shape: "rectangle",
-    userGenerated: false,
-    x: artShape.x,
-    y: artShape.y,
-    zIndex: carnivalAssets.length + 2,
-    width: ART_CIRCLE_WIDTH,
-    height: ART_CIRCLE_HEIGHT,
   });
 
   const shapes = [...carnivalAssets, artShape].sort(
@@ -381,10 +368,10 @@ const InteractiveCanvas: React.FC = () => {
             {shapes.map((shape, index) => {
               if (shape.userGenerated && !hasDragged) {
                 return (
-                  <DraggableShape
-                    fill={shape.fill}
+                  <DraggableArtwork
                     height={shape.height}
                     width={shape.width}
+                    image={shape.img!}
                     x={shape.x}
                     y={shape.y}
                     key={index}
@@ -405,15 +392,15 @@ const InteractiveCanvas: React.FC = () => {
                 );
               } else if (shape.userGenerated && hasDragged) {
                 return (
-                  <ResizableCircle
+                  <ResizableArtwork
                     key={index}
                     shapeProps={{
-                      fill: shape.fill,
                       height: shape.height!,
                       width: shape.width!,
                       x: shape.x,
                       y: shape.y,
                     }}
+                    image={shape.img!}
                     isSelected={isSeleced}
                     onSelect={() => {
                       setIsSelected(!isSeleced);
@@ -435,17 +422,6 @@ const InteractiveCanvas: React.FC = () => {
                           Math.max(dragShape.getZIndex(), MIN_Z_INDEX) || 1,
                       });
                     }}
-                  />
-                );
-              } else if (shape.id === "dragger") {
-                return (
-                  <Rect
-                    fill={shape.fill}
-                    x={shape.x}
-                    y={shape.y}
-                    draggable
-                    width={shape.width}
-                    height={shape.height}
                   />
                 );
               } else {

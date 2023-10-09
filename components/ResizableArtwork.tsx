@@ -1,6 +1,7 @@
 import { Shape, ShapeConfig } from "konva/lib/Shape";
 import { Fragment, useEffect, useRef } from "react";
-import { Rect, Transformer } from "react-konva";
+import { Image, Rect, Transformer } from "react-konva";
+import useImage from "use-image";
 
 type ShapeProps = {
   x: number;
@@ -10,11 +11,12 @@ type ShapeProps = {
   fill: string;
 };
 
-const ResizableCircle = ({
+const ResizableArtwork = ({
   shapeProps,
   isSelected,
   onSelect,
   onChange,
+  image,
   onDragEnd,
   onDragStart,
   onDragMove,
@@ -22,6 +24,7 @@ const ResizableCircle = ({
   shapeProps: ShapeProps;
   isSelected: boolean;
   onSelect: () => void;
+  image: string;
   onChange: (props: ShapeProps) => void;
   onDragStart?: (x: number, y: number) => void;
   onDragEnd?: (props: {
@@ -37,6 +40,7 @@ const ResizableCircle = ({
     shape: Shape<ShapeConfig>;
   }) => void;
 }) => {
+  const [usedImage] = useImage(image);
   const shapeRef = useRef<any | undefined>();
   const trRef = useRef<any | undefined>();
 
@@ -52,7 +56,7 @@ const ResizableCircle = ({
 
   return (
     <Fragment>
-      <Rect
+      <Image
         onClick={onSelect}
         onTap={onSelect}
         ref={shapeRef}
@@ -103,6 +107,7 @@ const ResizableCircle = ({
             height: Math.max(node.height() * scaleY),
           });
         }}
+        image={usedImage}
       />
       {isSelected && (
         <Transformer
@@ -120,4 +125,4 @@ const ResizableCircle = ({
   );
 };
 
-export default ResizableCircle;
+export default ResizableArtwork;

@@ -43,7 +43,7 @@ export const carnivalImages = [
   "carnival/z42_h580_w299_l588_t2284_nclownjugglingonunicycle.png",
   "carnival/z43_h580_w299_l701_t525_nclownjugglingonunicycle.png",
   "carnival/z44_h765_w516_l877_t2034_ngirlwithballooncart.png",
-  "carnival/z45_h243_w181_l410_t2421_nkidsittingonpath.png",
+  // "carnival/z45_h243_w181_l410_t2421_nkidsittingonpath.png",
   "carnival/z46_h297_w114_l1394_t2435_ndogstanding.png",
   "carnival/z47_h635_w301_l0_t1772_noldmansittingonbench.png",
   "carnival/z48_h703_w544_l267_t1581_nicecreamcart.png",
