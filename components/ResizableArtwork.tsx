@@ -8,7 +8,6 @@ type ShapeProps = {
   y: number;
   width: number;
   height: number;
-  fill: string;
 };
 
 const ResizableArtwork = ({
