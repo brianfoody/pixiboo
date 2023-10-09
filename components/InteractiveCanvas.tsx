@@ -183,25 +183,30 @@ const InteractiveCanvas: React.FC = () => {
   const handlePrint = () => {
     if (!stageRef.current) return;
 
-    // Convert stage to a data URL (image format)
-    // @ts-ignore
-    const dataUrl = stageRef.current.toDataURL();
+    setIsSelected(false);
+    setTimeout(() => {
+      // Convert stage to a data URL (image format)
+      // @ts-ignore
+      const dataUrl = stageRef.current.toDataURL({
+        pixelRatio: 1 / (canvasRenderHeight / canvasActualHeight),
+      });
 
-    // Create a new anchor element
-    const link = document.createElement("a");
-    link.href = dataUrl;
+      // Create a new anchor element
+      const link = document.createElement("a");
+      link.href = dataUrl;
 
-    // Specify the desired file name for the download
-    link.download = "artwork.png";
+      // Specify the desired file name for the download
+      link.download = "artwork.png";
 
-    // Append the anchor to the body (it won't be visible)
-    document.body.appendChild(link);
+      // Append the anchor to the body (it won't be visible)
+      document.body.appendChild(link);
 
-    // Trigger a click event on the anchor to start the download
-    link.click();
+      // Trigger a click event on the anchor to start the download
+      link.click();
 
-    // Remove the anchor from the DOM
-    document.body.removeChild(link);
+      // Remove the anchor from the DOM
+      document.body.removeChild(link);
+    }, 10);
   };
 
   // const calculateSpring = (pos: { x: number; y: number }) => {

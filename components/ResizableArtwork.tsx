@@ -97,6 +97,7 @@ const ResizableArtwork = ({
           // we will reset it back
           node.scaleX(1);
           node.scaleY(1);
+
           onChange({
             ...shapeProps,
             x: node.x(),
@@ -111,12 +112,30 @@ const ResizableArtwork = ({
       {isSelected && (
         <Transformer
           ref={trRef}
+          keepRatio={true}
+          centeredScaling
           boundBoxFunc={(oldBox, newBox) => {
             // limit resize
-            if (newBox.width < 5 || newBox.height < 5) {
+            if (newBox.width < 15 || newBox.height < 15) {
               return oldBox;
             }
-            return newBox;
+
+            const widthDiff = newBox.width - oldBox.width;
+            const heightDiff = newBox.height - oldBox.height;
+
+            if (widthDiff === 0 && heightDiff !== 0) {
+              return {
+                ...newBox,
+                width: oldBox.width * (newBox.height / oldBox.height),
+              };
+            } else if (widthDiff !== 0 && heightDiff === 0) {
+              return {
+                ...newBox,
+                height: oldBox.height * (newBox.width / oldBox.width),
+              };
+            } else {
+              return newBox;
+            }
           }}
         />
       )}
