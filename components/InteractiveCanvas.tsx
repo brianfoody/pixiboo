@@ -15,6 +15,7 @@ import ResizableArtwork from "./ResizableArtwork";
 import { Shape, ShapeConfig } from "konva/lib/Shape";
 import { carnivalImages } from "./carnivalArtwork";
 import useImage from "use-image";
+import useSound from "use-sound";
 
 type CanvasImage = {
   w: number;
@@ -89,6 +90,18 @@ const overlapRectRect = (r1: CanvasItem, r2: CanvasItem): boolean => {
 };
 
 const InteractiveCanvas: React.FC = () => {
+  const soundUrl = "/sounds/drums.mp3";
+
+  const [play] = useSound(soundUrl, {
+    sprite: {
+      kick: [0, 350],
+      hihat: [374, 160],
+      snare: [666, 290],
+      cowbell: [968, 200],
+    },
+    volume: 0.9,
+  });
+
   const pRef = useRef<HTMLParagraphElement | null | undefined>();
   const height = typeof window !== "undefined" ? window.innerHeight : 100;
 
@@ -153,7 +166,7 @@ const InteractiveCanvas: React.FC = () => {
 
   const stageRef = useRef(null);
 
-  const [isSelected, setIsSelected] = useState(false);
+  const [isSelected, setIsSelected] = useState(true);
 
   const textSize = canvasRenderWidth * 0.035; // This will adjust the text size based on the screen width, adjust the multiplier as needed
   const padding = canvasRenderWidth * 0.03; // space around the text inside the background
@@ -271,11 +284,11 @@ const InteractiveCanvas: React.FC = () => {
       return overlapRectRect(draggingItem, item) && item.zIndex !== 1;
     });
 
-    console.log(
-      `itemsIntersecting = ${JSON.stringify(
-        itemsIntersecting.map((i) => i.zIndex)
-      )}`
-    );
+    // console.log(
+    //   `itemsIntersecting = ${JSON.stringify(
+    //     itemsIntersecting.map((i) => i.zIndex)
+    //   )}`
+    // );
 
     const yCutoff = y + h;
 
@@ -285,18 +298,19 @@ const InteractiveCanvas: React.FC = () => {
       (s) => s.height! + s.y > yCutoff
     );
 
-    console.log(
-      `itemsBelow = ${JSON.stringify(itemsBelow.map((i) => i.zIndex))}`
-    );
+    // console.log(
+    //   `itemsBelow = ${JSON.stringify(itemsBelow.map((i) => i.zIndex))}`
+    // );
 
     const lowestZIndexInBound = Math.min(...itemsBelow.map((i) => i.zIndex));
 
-    const newZIndex = lowestZIndexInBound - 0.5;
-    if (lowestZIndexInBound && artShape.zIndex !== newZIndex && newZIndex > 1) {
-      console.log(`newZIndex = ${newZIndex}`);
+    const newZIndex = lowestZIndexInBound - 1;
+
+    const currentZIndex = props.shape.getZIndex();
+    if (lowestZIndexInBound && currentZIndex !== newZIndex && newZIndex > 1) {
+      play({ id: "cowbell" });
       props.shape.setZIndex(newZIndex);
       props.shape.getLayer()?.batchDraw();
-      // pRef.current.
     }
   };
 
