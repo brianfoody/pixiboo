@@ -79,17 +79,6 @@ const ART_CIRCLE_START_X = ART_CIRCLE_WIDTH + 25;
 const instructionText = "Drag your character to hide it within the artwork";
 const resize_instructionText = "Tap your character to resize it.";
 
-const clamp = function (num: number, min: number, max: number): number {
-  return Math.max(min, Math.min(num, max));
-};
-
-const overlapCircleCircle = (c1: CanvasItem, c2: CanvasItem): boolean => {
-  const dx = c1.x - c2.x;
-  const dy = c1.y - c2.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  return distance < c1.radius! + c2.radius!;
-};
-
 const overlapRectRect = (r1: CanvasItem, r2: CanvasItem): boolean => {
   return (
     r1.x < r2.x + r2.width! &&
@@ -99,24 +88,14 @@ const overlapRectRect = (r1: CanvasItem, r2: CanvasItem): boolean => {
   );
 };
 
-const overlapCircleRect = (c: CanvasItem, r: CanvasItem): boolean => {
-  const closestX = clamp(c.x, r.x, r.x + r.width!);
-  const closestY = clamp(c.y, r.y, r.y + r.height!);
-
-  const dx = c.x - closestX;
-  const dy = c.y - closestY;
-
-  return dx * dx + dy * dy <= c.radius! * c.radius!;
-};
-
 const InteractiveCanvas: React.FC = () => {
-  const width = typeof window !== "undefined" ? window.innerWidth : 100;
+  const pRef = useRef<HTMLParagraphElement | null | undefined>();
   const height = typeof window !== "undefined" ? window.innerHeight : 100;
 
   const canvasActualWidth = 2160;
   const canvasActualHeight = 3840;
 
-  const canvasRenderHeight = height - 40 - 20;
+  const canvasRenderHeight = height;
   const canvasRenderWidth =
     canvasRenderHeight * (canvasActualWidth / canvasActualHeight);
 
@@ -174,7 +153,7 @@ const InteractiveCanvas: React.FC = () => {
 
   const stageRef = useRef(null);
 
-  const [isSelected, setIsSelected] = useState(true);
+  const [isSelected, setIsSelected] = useState(false);
 
   const textSize = canvasRenderWidth * 0.035; // This will adjust the text size based on the screen width, adjust the multiplier as needed
   const padding = canvasRenderWidth * 0.03; // space around the text inside the background
@@ -288,289 +267,307 @@ const InteractiveCanvas: React.FC = () => {
       height: h,
     };
 
-    const itemsInBounds: CanvasItem[] = shapes.filter((item) => {
-      if (item.shape === "rectangle") {
-        return overlapRectRect(draggingItem, item);
-      } else if (item.shape === "circle") {
-        return overlapCircleRect(item, draggingItem);
-      }
+    const itemsIntersecting: CanvasItem[] = shapes.filter((item) => {
+      return overlapRectRect(draggingItem, item) && item.zIndex !== 1;
     });
 
-    const itemsInBoundsIds = itemsInBounds.map((i) => i.id);
-
-    const firstItemInBound = shapes.find((s) =>
-      itemsInBoundsIds.includes(s.id)
+    console.log(
+      `itemsIntersecting = ${JSON.stringify(
+        itemsIntersecting.map((i) => i.zIndex)
+      )}`
     );
 
-    const newZIndex = (firstItemInBound?.zIndex || 0) - 0.5;
-    if (firstItemInBound && artShape.zIndex !== newZIndex) {
-      const newZIndex =
-        Math.max(firstItemInBound.zIndex - 0.5, MIN_Z_INDEX) || 1;
+    const yCutoff = y + h;
+
+    // console.log(`yCutoff = ${yCutoff}`);
+
+    const itemsBelow = itemsIntersecting.filter(
+      (s) => s.height! + s.y > yCutoff
+    );
+
+    console.log(
+      `itemsBelow = ${JSON.stringify(itemsBelow.map((i) => i.zIndex))}`
+    );
+
+    const lowestZIndexInBound = Math.min(...itemsBelow.map((i) => i.zIndex));
+
+    const newZIndex = lowestZIndexInBound - 0.5;
+    if (lowestZIndexInBound && artShape.zIndex !== newZIndex && newZIndex > 1) {
+      console.log(`newZIndex = ${newZIndex}`);
       props.shape.setZIndex(newZIndex);
       props.shape.getLayer()?.batchDraw();
+      // pRef.current.
     }
   };
 
   return (
     <div
-    // style={{
-    //   width,
-    //   height,
-    // }}
+      style={{
+        width: canvasRenderWidth,
+        height: canvasRenderHeight,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      <div
+      {/* @ts-ignore */}
+      <p ref={pRef}></p>
+      <Stage
+        ref={stageRef}
+        width={canvasRenderWidth}
+        height={canvasRenderHeight}
+        onMouseMove={(e) => {
+          if (lockedMouseMove.current) return;
+          handleEvent(e);
+        }}
+        onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
+        onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
+        onDragStart={() => (lockedMouseMove.current = true)}
+        onDragMove={(e) => handleEvent(e)}
+        onDragEnd={() => {
+          setCursorPos({ x: 0, y: 0 });
+          setTimeout(() => (lockedMouseMove.current = false), 5);
+        }}
+        onTouchStart={(e) => {
+          handleEvent(e);
+          handlePinchStart(e);
+        }}
+        onTouchMove={(e) => {
+          handleEvent(e);
+        }}
         style={{
-          width,
-          height: 40,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          position: "relative",
-          flexDirection: "row",
+          borderWidth: 1,
+          borderColor: "green",
         }}
       >
-        <a href="https://pixiboo.ai">
-          <p>Pre-order your artwork now!</p>
-        </a>
+        <Layer>
+          <Rect
+            width={canvasRenderWidth}
+            height={canvasRenderHeight}
+            fill="#9EC517"
+            onClick={() => setIsSelected(false)}
+            onTap={() => setIsSelected(false)}
+          />
 
-        <button
-          onClick={handlePrint}
-          style={{
-            marginRight: "10px",
-          }}
-        >
-          Print
-        </button>
-      </div>
-
-      {/* <ShapePanel onShapeDrop={handleShapeDrop} /> */}
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Stage
-          ref={stageRef}
-          width={canvasRenderWidth}
-          height={canvasRenderHeight}
-          onMouseMove={(e) => {
-            if (lockedMouseMove.current) return;
-            handleEvent(e);
-          }}
-          onTouchEnd={() => setCursorPos({ x: 0, y: 0 })}
-          onMouseOut={() => setCursorPos({ x: 0, y: 0 })}
-          onDragStart={() => (lockedMouseMove.current = true)}
-          onDragMove={(e) => handleEvent(e)}
-          onDragEnd={() => {
-            setCursorPos({ x: 0, y: 0 });
-            setTimeout(() => (lockedMouseMove.current = false), 5);
-          }}
-          onTouchStart={(e) => {
-            handleEvent(e);
-            handlePinchStart(e);
-          }}
-          onTouchMove={(e) => {
-            handleEvent(e);
-          }}
-          style={{
-            borderWidth: 1,
-            borderColor: "green",
-          }}
-        >
-          <Layer>
-            <Rect
-              width={canvasRenderWidth}
-              height={canvasRenderHeight}
-              fill="#9EC517"
-              onClick={() => setIsSelected(false)}
-              onTap={() => setIsSelected(false)}
-            />
-
-            {shapes.map((shape, index) => {
-              if (shape.userGenerated) {
-                return (
-                  <ResizableArtwork
-                    key={index}
-                    shapeProps={{
-                      height: shape.height!,
-                      width: shape.width!,
-                      x: shape.x,
-                      y: shape.y,
-                    }}
-                    resizable={hasDragged}
-                    image={shape.img!}
-                    isSelected={isSelected}
-                    onMouseOver={() => {
-                      if (!hasDragged) {
-                        setIsSelected(false);
-                      }
-                    }}
-                    onSelect={() => {
-                      if (hasDragged) {
-                        setHasSelected(true);
-                      }
-                      setIsSelected(true);
-                    }}
-                    onChange={(newAttrs) => {
-                      setArtShape({
-                        ...artShape,
-                        ...newAttrs,
-                      });
-                    }}
-                    onDragStart={({ shape }) => {
-                      setDragStarted(true);
-                    }}
-                    onDragMove={onDragMove}
-                    onDragEnd={({ x, y, shape: dragShape }) => {
-                      setHasDragged(true);
-
-                      setArtShape({
-                        ...shape,
-                        x,
-                        y,
-                        zIndex:
-                          Math.max(dragShape.getZIndex(), MIN_Z_INDEX) || 1,
-                      });
-                    }}
-                  />
-                );
-              } else {
-                const [image] = useImage(shape.img!);
-                return (
-                  <Image
-                    image={image}
-                    key={shape.id}
-                    width={shape.width}
-                    height={shape.height}
-                    x={shape.x}
-                    y={shape.y}
-                    listening={false}
-                  />
-                );
-                // const springProps = useSpring({
-                //   ...calculateSpring(shape),
-                //   config: { tension: 170, friction: 20 },
-                // });
-
-                // return (
-                //   // @ts-ignore
-                //   <animated.Circle
-                //     key={index}
-                //     radius={shape.radius}
-                //     fill="black"
-                //     stroke="blue"
-                //     strokeWidth={4}
-                //     // x={shape.x}
-                //     // y={shape.y}
-                //     name={shape.id}
-                //     zIndex={shape.zIndex}
-                //     {...springProps}
-                //   />
-                // );
-              }
-            })}
-
-            {/* Add back for instructions using local storage to only show once */}
-            {hasDragged === false &&
-              dragStarted === false &&
-              artShape.width && (
-                <>
-                  <Arrow
-                    points={[
-                      canvasRenderWidth / 2,
-                      canvasRenderHeight * 0.8,
-                      artShape.x + artShape.width! * 1.05,
-                      artShape.y + artShape.height! * 1.05,
-                    ]}
-                    pointerLength={20}
-                    pointerWidth={20}
-                    fill="black"
-                    stroke="black"
-                    strokeWidth={6}
-                  />
-                  <Rect
-                    x={
-                      canvasRenderWidth / 2 -
-                      (textSize * instructionText.length) / 4
+          {shapes.map((shape, index) => {
+            if (shape.userGenerated) {
+              return (
+                <ResizableArtwork
+                  key={index}
+                  shapeProps={{
+                    height: shape.height!,
+                    width: shape.width!,
+                    x: shape.x,
+                    y: shape.y,
+                  }}
+                  resizable={hasDragged}
+                  image={shape.img!}
+                  isSelected={isSelected}
+                  onMouseOver={() => {
+                    if (!hasDragged) {
+                      setIsSelected(false);
                     }
-                    y={canvasRenderHeight * 0.8}
-                    width={
-                      (textSize * instructionText.length) / 2 + padding * 2
+                  }}
+                  onSelect={() => {
+                    if (hasDragged) {
+                      setHasSelected(true);
                     }
-                    height={textSize + padding * 2}
-                    fill="black"
-                    cornerRadius={5}
-                  />
+                    setIsSelected(true);
+                  }}
+                  onChange={(newAttrs) => {
+                    setArtShape({
+                      ...artShape,
+                      ...newAttrs,
+                    });
+                  }}
+                  onDragStart={({ shape }) => {
+                    setDragStarted(true);
+                  }}
+                  onDragMove={onDragMove}
+                  onDragEnd={({ x, y, shape: dragShape }) => {
+                    setHasDragged(true);
 
-                  <Text
-                    x={
-                      canvasRenderWidth / 2 -
-                      (textSize * instructionText.length) / 4 +
-                      padding
-                    }
-                    y={canvasRenderHeight * 0.8 + padding}
-                    text={instructionText}
-                    fontSize={textSize}
-                    fill="white"
-                    width={(textSize * instructionText.length) / 2}
-                    align="center"
-                    wrap="word"
-                  />
-                </>
-              )}
+                    setArtShape({
+                      ...shape,
+                      x,
+                      y,
+                      zIndex: Math.max(dragShape.getZIndex(), MIN_Z_INDEX) || 1,
+                    });
+                  }}
+                />
+              );
+            } else {
+              const [image] = useImage(shape.img!);
+              return (
+                <Image
+                  image={image}
+                  stroke={"lightgray"}
+                  strokeWidth={0.5}
+                  key={shape.id}
+                  width={shape.width}
+                  height={shape.height}
+                  x={shape.x}
+                  y={shape.y}
+                  listening={false}
+                  // onClick={(evt) => {
+                  //   console.log(`Clicked ${shape.img}`);
+                  //   evt.target.setAttrs({
+                  //     stroke:
+                  //       evt.target.getAttr("stroke") === "red"
+                  //         ? "lightgray"
+                  //         : "red",
+                  //   });
+                  // }}
+                  // onMouseDown={(evt) => {
+                  //   console.log(`onMouseDown ${shape.img}`);
+                  // }}
+                />
+              );
+              // const springProps = useSpring({
+              //   ...calculateSpring(shape),
+              //   config: { tension: 170, friction: 20 },
+              // });
 
-            {hasDragged && !hasSelected && (
+              // return (
+              //   // @ts-ignore
+              //   <animated.Circle
+              //     key={index}
+              //     radius={shape.radius}
+              //     fill="black"
+              //     stroke="blue"
+              //     strokeWidth={4}
+              //     // x={shape.x}
+              //     // y={shape.y}
+              //     name={shape.id}
+              //     zIndex={shape.zIndex}
+              //     {...springProps}
+              //   />
+              // );
+            }
+          })}
+
+          {shapes.map((shape, index) => {
+            return (
               <>
-                <Arrow
-                  points={[
-                    canvasRenderWidth / 2,
-                    canvasRenderHeight * 0.8,
-                    artShape.x + artShape.width! * 0.5,
-                    artShape.y + artShape.height! * 1.1,
-                  ]}
-                  pointerLength={20}
-                  pointerWidth={20}
-                  fill="black"
-                  stroke="blck"
-                  strokeWidth={6}
-                />
                 <Rect
-                  x={
-                    canvasRenderWidth / 2 -
-                    (textSize * resize_instructionText.length) / 4
-                  }
-                  y={canvasRenderHeight * 0.8}
-                  width={
-                    (textSize * resize_instructionText.length) / 2 + padding * 2
-                  }
-                  height={textSize + padding * 2}
-                  fill="blck"
-                  cornerRadius={5}
-                />
-
-                <Text
-                  x={
-                    canvasRenderWidth / 2 -
-                    (textSize * resize_instructionText.length) / 4 +
-                    padding
-                  }
-                  y={canvasRenderHeight * 0.8 + padding}
-                  text={resize_instructionText}
-                  fontSize={textSize}
+                  x={shape.width! * 0.5 + shape.x - 7.5}
+                  y={shape.height! * 0.5 + shape.y - 5}
+                  text={shape.zIndex + ""}
+                  fontSize={10}
                   fill="white"
-                  width={(textSize * resize_instructionText.length) / 2}
+                  width={15}
+                  height={15}
+                  stroke={"purple"}
+                  strokeWidth={0.5}
+                  align="center"
+                  wrap="word"
+                />
+                <Text
+                  x={shape.width! * 0.5 + shape.x - 20}
+                  y={shape.height! * 0.5 + shape.y}
+                  text={shape.zIndex + ""}
+                  fontSize={10}
+                  fill="black"
+                  width={40}
                   align="center"
                   wrap="word"
                 />
               </>
-            )}
-          </Layer>
-        </Stage>
-      </div>
+            );
+          })}
+
+          {/* Add back for instructions using local storage to only show once */}
+          {hasDragged === false && dragStarted === false && artShape.width && (
+            <>
+              <Arrow
+                points={[
+                  canvasRenderWidth / 2,
+                  canvasRenderHeight * 0.8,
+                  artShape.x + artShape.width! * 1.05,
+                  artShape.y + artShape.height! * 1.05,
+                ]}
+                pointerLength={20}
+                pointerWidth={20}
+                fill="black"
+                stroke="black"
+                strokeWidth={6}
+              />
+              <Rect
+                x={
+                  canvasRenderWidth / 2 -
+                  (textSize * instructionText.length) / 4
+                }
+                y={canvasRenderHeight * 0.8}
+                width={(textSize * instructionText.length) / 2 + padding * 2}
+                height={textSize + padding * 2}
+                fill="black"
+                cornerRadius={5}
+              />
+
+              <Text
+                x={
+                  canvasRenderWidth / 2 -
+                  (textSize * instructionText.length) / 4 +
+                  padding
+                }
+                y={canvasRenderHeight * 0.8 + padding}
+                text={instructionText}
+                fontSize={textSize}
+                fill="white"
+                width={(textSize * instructionText.length) / 2}
+                align="center"
+                wrap="word"
+              />
+            </>
+          )}
+
+          {hasDragged && !hasSelected && (
+            <>
+              <Arrow
+                points={[
+                  canvasRenderWidth / 2,
+                  canvasRenderHeight * 0.8,
+                  artShape.x + artShape.width! * 0.5,
+                  artShape.y + artShape.height! * 1.1,
+                ]}
+                pointerLength={20}
+                pointerWidth={20}
+                fill="black"
+                stroke="blck"
+                strokeWidth={6}
+              />
+              <Rect
+                x={
+                  canvasRenderWidth / 2 -
+                  (textSize * resize_instructionText.length) / 4
+                }
+                y={canvasRenderHeight * 0.8}
+                width={
+                  (textSize * resize_instructionText.length) / 2 + padding * 2
+                }
+                height={textSize + padding * 2}
+                fill="blck"
+                cornerRadius={5}
+              />
+
+              <Text
+                x={
+                  canvasRenderWidth / 2 -
+                  (textSize * resize_instructionText.length) / 4 +
+                  padding
+                }
+                y={canvasRenderHeight * 0.8 + padding}
+                text={resize_instructionText}
+                fontSize={textSize}
+                fill="white"
+                width={(textSize * resize_instructionText.length) / 2}
+                align="center"
+                wrap="word"
+              />
+            </>
+          )}
+        </Layer>
+      </Stage>
     </div>
   );
 };
