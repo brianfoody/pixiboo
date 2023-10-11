@@ -415,8 +415,8 @@ const InteractiveCanvas: React.FC = () => {
               return (
                 <Image
                   image={image}
-                  stroke={"lightgray"}
-                  strokeWidth={0.5}
+                  // stroke={"lightgray"}
+                  // strokeWidth={0.5}
                   key={shape.id}
                   width={shape.width}
                   height={shape.height}
@@ -460,7 +460,7 @@ const InteractiveCanvas: React.FC = () => {
             }
           })}
 
-          {shapes.map((shape, index) => {
+          {/* {shapes.map((shape, index) => {
             return (
               <>
                 <Rect
@@ -488,7 +488,7 @@ const InteractiveCanvas: React.FC = () => {
                 />
               </>
             );
-          })}
+          })} */}
 
           {/* Add back for instructions using local storage to only show once */}
           {hasDragged === false && dragStarted === false && artShape.width && (
